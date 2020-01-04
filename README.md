@@ -37,7 +37,7 @@ Or with a saved derived key (much faster):
 >>> b=iOSBackup(udid="00456030-000E4412342802E", derivedkey="dd6b6123494c5dbdff7804321fe43ffe1babcdb6074014afedc7cb47f351524")
 ```
 
-Forcing a backup folder, useful when reading backups on Linux, where there is no standard for backup folders):
+Forcing a backup folder, useful when reading backups on Linux, where there is no standard for backup folders:
 ```python
 >>> b=iOSBackup(udid="00456030-000E4412342802E", cleartextpassword="mypassword", backuproot="/home/myuser/itunesfiles")
 ```
@@ -63,8 +63,10 @@ Get a list of backed-up files:
  ...]
 ```
 
-`backupFile` is the file name on your computer.
+`backupFile` is the file name on your computer. Basically SHA1([Domain]/[FilePath]).
+
 `name` is the original semi-complete path of file name in the device.
+
 `domain` is the file group this file is member, see bellow list of domains.
 
 Or put it directly into a Pandas DataFrame for easier manipulation and searching:
