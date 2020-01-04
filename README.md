@@ -34,7 +34,7 @@ With your password (a lengthy process):
 
 Or with a saved derived key (much faster):
 ```python
->>> b=iOSBackup(udid="00456030-000E4412342802E", derivedkey="dd6b6f9fe94c5dbdff780ddd97fe43ffe1b0e33b6074014a3e397cb47f351524")
+>>> b=iOSBackup(udid="00456030-000E4412342802E", derivedkey="dd6b6123494c5dbdff7804321fe43ffe1babcdb6074014afedc7cb47f351524")
 ```
 
 Forcing a backup folder (useful when reading backups on Linux):
