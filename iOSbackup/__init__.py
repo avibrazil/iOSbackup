@@ -15,14 +15,14 @@ class iOSbackup(object):
     Class that reads and extracts files from a password-encrypted iOS backup created by
     iTunes on Mac and Windows. Compatible with iOS 13.
 	
-	You will need your backup password to decrypt the backup files, this is the password
-	iTunes asks when it is configured to do encrypted backups. You should always prefer
-	encrypted backups because they are more secure and include more files from your
-	device. Non-encrypted backups do not backup files as Health app database
-	and other preciosities.
-	
-	Common Usage
-	------------
+    You will need your backup password to decrypt the backup files, this is the password
+    iTunes asks when it is configured to do encrypted backups. You should always prefer
+    encrypted backups because they are more secure and include more files from your
+    device. Non-encrypted backups do not backup files as Health app database
+    and other preciosities.
+    
+    Common Usage
+    ------------
     iOSbackup.getDeviceList()
     
     b=iOSbackup(udid="07349330-000327638962802E", derivedkey="dd61467e94c5dbdff780ddd9abdefb1b0e33b6426875a3e397cb47f351524")
@@ -30,60 +30,60 @@ class iOSbackup(object):
     files=b.getBackupFilesList()
     
     b.getFileDecryptedCopy(relativePath="Library/Databases/CellularUsage.db")
-	
     
-	Attributes
-	----------
-	backupRoot : str
-		Full path of folder that contains device backups. On macOS this is ~/Library/Application Support/MobileSync/Backup
-	udid : str
-		The UDID of current device backup being handled.
-	manifest : dict
-		Device backup information as retrieved from Manifest.plist file
-	manifestDB : str
-		Full path of the usable decrypted copy of backup's Manifest.db file.
-	platformFoldersHint : dict
-		List of folders per platform used by iTunes to store device backups.
-	decryptionKey : bytes
-		The master backup decryption key derived directly from user's backup password.
+    
+    Attributes
+    ----------
+    backupRoot : str
+        Full path of folder that contains device backups. On macOS this is ~/Library/Application Support/MobileSync/Backup
+    udid : str
+        The UDID of current device backup being handled.
+    manifest : dict
+        Device backup information as retrieved from Manifest.plist file
+    manifestDB : str
+        Full path of the usable decrypted copy of backup's Manifest.db file.
+    platformFoldersHint : dict
+        List of folders per platform used by iTunes to store device backups.
+    decryptionKey : bytes
+        The master backup decryption key derived directly from user's backup password.
 
 
-	User Methods
-	------------
-	iOSbackup()
-		Constructor that delivers an initialized and usable instance of the class
-	getHintedBackupRoot()
-		Get full path of best-match folder name containing iOS backups, based on your platform.
-	setBackupRoot()
-		Set it explicitly if folder is different from what is known by platformFoldersHint
-	getDeviceList()
-		Returns list of devices found under backupRoot. Can be used as a static method.
-	getDeviceBasicInfo()
-		Static method that returns a dict of basic info about a device and its backup
-	setDevice()
-		Set the device by its UDID
-	getBackupFilesList()
-		Returns a dict with all device backup files catalogued in its Manifest.db
-	getFileDecryptedCopy()
-		Returns a dict with filename of a decrypted copy of certain file along with some file information
-	getManifestDB()
-		Returns full path name of a decrypted copy of Manifest.db
-	getDecryptionKey()
-		Returns decryptionKey as hex bytes
+    User Methods
+    ------------
+    iOSbackup()
+        Constructor that delivers an initialized and usable instance of the class
+    getHintedBackupRoot()
+        Get full path of best-match folder name containing iOS backups, based on your platform.
+    setBackupRoot()
+        Set it explicitly if folder is different from what is known by platformFoldersHint
+    getDeviceList()
+        Returns list of devices found under backupRoot. Can be used as a static method.
+    getDeviceBasicInfo()
+        Static method that returns a dict of basic info about a device and its backup
+    setDevice()
+        Set the device by its UDID
+    getBackupFilesList()
+        Returns a dict with all device backup files catalogued in its Manifest.db
+    getFileDecryptedCopy()
+        Returns a dict with filename of a decrypted copy of certain file along with some file information
+    getManifestDB()
+        Returns full path name of a decrypted copy of Manifest.db
+    getDecryptionKey()
+        Returns decryptionKey as hex bytes
 
 
-	Internal Methods
-	----------------
-	deriveKeyFromPassword()
-		Calculates, stores and return decryptionKey from user's clear text backup password
-	loadKeys()
-		Loads various encrypted decryption keys from Manifest.plist
-	unlockKeys()
-		Use decryptionKey to decrypt keys loaded by loadKeys()
-		
-	
-	
-	
+    Internal Methods
+    ----------------
+    deriveKeyFromPassword()
+        Calculates, stores and return decryptionKey from user's clear text backup password
+    loadKeys()
+        Loads various encrypted decryption keys from Manifest.plist
+    unlockKeys()
+        Use decryptionKey to decrypt keys loaded by loadKeys()
+        
+    
+    
+    
     
     The process of accessing an encrypted iOS backup (encapsulated and made
     easier by this class) goes like this:
