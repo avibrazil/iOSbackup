@@ -225,3 +225,8 @@ bfecaa9c467e3acb085a5b312bd27bdd5cd7579a | WirelessDomain | Library/Preferences/
 cd6702cea29fe89cf280a76794405adb17f9a0ee | HomeDomain | Library/AddressBook/AddressBookImages.sqlitedb | Contact photos
 9db3e5a6f1672cc306cd785809811e79cc43a2f8 | HomeDomain | Library/AddressBook/backup/AddressBook.sqlitedb
 2a87d5bcdb9753f1462dd1e929b17e6a971c5b01 | HomeDomain | Library/AddressBook/backup/AddressBookImages.sqlitedb
+1a0e7afc19d307da602ccdcece51af33afe92c53 | HomeDomain | Library/Safari/History.db
+. | MediaDomain | Library/SMS/Attachments/*
+. | MediaDomain | Library/SMS/StickerCache/*
+. | . | Library/Caches/locationd/consolidated.db | Apparently list of known iBeacons
+
