@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="iOSbackup",
-    version="0.9.1",
+    version="0.9.2",
     author="Avi Alkalay",
     author_email="avibrazil@gmail.com",
     description="Reads and extracts files from password-encrypted iOS backups",

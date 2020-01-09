@@ -7,6 +7,7 @@ import textwrap
 import pprint
 import tempfile
 import sqlite3
+from datetime import datetime, timezone
 import Crypto.Cipher.AES # https://www.dlitz.net/software/pycrypto/
 
 
@@ -14,7 +15,7 @@ class iOSbackup(object):
     """
     Class that reads and extracts files from a password-encrypted iOS backup created by
     iTunes on Mac and Windows. Compatible with iOS 13.
-	
+
     You will need your backup password to decrypt the backup files, this is the password
     iTunes asks when it is configured to do encrypted backups. You should always prefer
     encrypted backups because they are more secure and include more files from your
@@ -111,7 +112,7 @@ class iOSbackup(object):
     
     def __init__(self, udid, cleartextpassword=None, derivedkey=None, backuproot=None):
         """Constructor that delivers an initialized and usable instance of the class.
-    	
+
         Parameters
         ----------
         backuproot : str, optional
@@ -126,7 +127,7 @@ class iOSbackup(object):
         """
         self.setBackupRoot(backuproot)
         self.udid = udid
-        
+        self.date = None # modification time of Manifest.plist is backup time, set by loadKeys()
         self.decryptionKey = None
         self.attrs = {}
         self.uuid = None
@@ -159,13 +160,15 @@ class iOSbackup(object):
     	
         template=textwrap.dedent("""\
             backup root folder: {backupRoot}
-            device ID: {udid}            
+            device ID: {udid}
+            date: {date}
             uuid: {uuid}
             device name: {name}
             device type: {type}
             iOS version: {ios}
             serial: {serial}
             manifest[IsEncrypted]: {IsEncrypted}
+            manifest[WasPasscodeSet]: {PasscodeSet}
             decrypted manifest DB: {manifestDB}
             decryptionKey: {decryptionKey}
             manifest[ManifestKey]: {ManifestKey}
@@ -177,12 +180,14 @@ class iOSbackup(object):
         return template.format(
             backupRoot=self.backupRoot,
             udid=self.udid,
+            date=self.date,
             decryptionKey=self.getDecryptionKey(),
             uuid=self.uuid.hex(),
             attrs=pprint.pformat(self.attrs, indent=4),
             wrap=self.wrap,
             classKeys=pprint.pformat(self.classKeys, indent=4),
             IsEncrypted=self.manifest['IsEncrypted'],
+            PasscodeSet=self.manifest['WasPasscodeSet'],
             ManifestKey=self.manifest['ManifestKey'].hex(),
             Applications=pprint.pformat(self.manifest['Applications'], indent=4),
             manifestDB=self.manifestDB,
@@ -206,7 +211,7 @@ class iOSbackup(object):
             if sys.platform.startswith(plat):
                 return os.path.expanduser(iOSbackup.platformFoldersHint[plat])
         return None
-		
+
 
     def setBackupRoot(self, path=None):
         """Set it explicitly if folder is different from what is known by platformFoldersHint
@@ -216,7 +221,7 @@ class iOSbackup(object):
         path : str, optional
             Full path of folder that contains device backups. Uses platformFoldersHint if omitted.
         """
-    	
+
         if path:
             self.backupRoot=os.path.expanduser(path)
         else:
@@ -249,13 +254,15 @@ class iOSbackup(object):
                     "ios": manifest['Lockdown']['ProductVersion'],
                     "serial": manifest['Lockdown']['SerialNumber'],
                     "type": manifest['Lockdown']['ProductType'],
-                    "encrypted": manifest['IsEncrypted']
+                    "encrypted": manifest['IsEncrypted'],
+                    "passcodeSet": manifest['WasPasscodeSet'],
+                    "date": iOSbackup.convertTime(os.path.getmtime(manifestFile), since2001=False)
                 }
         else:
             raise Exception("Need valid backup root folder path and a device UDID.")
         
         return info
-                
+
 
     
     def getDeviceList(self, backuproot=None):
@@ -339,7 +346,8 @@ class iOSbackup(object):
             info={
                 "name": f['relativePath'],
                 "backupFile": f['fileID'],
-                "domain": f['domain']
+                "domain": f['domain'],
+                **f
             }
             list.append(info)
 
@@ -361,7 +369,7 @@ class iOSbackup(object):
         temporary : str, optional
             Creates a temporary file (using tempfile module) in a temporary folder. Use targetFolder if not omitted.
         """
-		
+
         if not self.manifestDB:
             raise Exception("Object not yet innitialized or can't find decrypted files catalog (Manifest.db)")
             
@@ -406,11 +414,16 @@ class iOSbackup(object):
                 output.write(dataDecrypted)
             
             info={
+                "originalFilePath": relativePath,
                 "decryptedFilePath": targetFileName,
                 "domain": backupFile['domain'],
-                "originalFilePath": relativePath,
                 "backupFile": backupFile['fileID'],
-                "size": fileData['Size']
+                "size": fileData['Size'],
+                "lastModified": iOSbackup.convertTime(fileData['LastModified'], since2001=False),
+                "lastStatusChange": iOSbackup.convertTime(fileData['LastStatusChange'], since2001=False),
+                "mode": fileData['Mode'],
+                "userID": fileData['UserID'],
+                "inode": fileData['InodeNumber']
             }
             
             return info
@@ -418,7 +431,27 @@ class iOSbackup(object):
             raise Exception(f"Can't find file {relativePath} on this backup")
             
 
-                
+    def convertTime(timeToConvert, since2001=True):
+        
+        apple2001reference=datetime(2001, 1, 1, tzinfo=timezone.utc)
+        
+        if type(timeToConvert)==int or type(timeToConvert)==float:
+            # convert from UTC timestamp to datetime.datetime python object on UTC timezone
+            if since2001:
+                return datetime.fromtimestamp(timeToConvert + apple2001reference.timestamp(), timezone.utc)
+            else:
+                return datetime.fromtimestamp(timeToConvert, timezone.utc)
+            
+        
+        if isinstance(timeToConvert, datetime):
+            # convert from timezone-aware datetime Python object to UTC UNIX timestamp
+            if since2001:
+                return (timeToConvert - apple2001reference).total_seconds()
+            else:
+                return timeToConvert.timestamp()
+
+
+    
     def getManifestDB(self):
         """Returns full path name of a decrypted copy of Manifest.db. Used internally."""
         with open(os.path.join(self.backupRoot,self.udid,'Manifest.db'), 'rb') as db:
@@ -442,6 +475,9 @@ class iOSbackup(object):
     
     def loadKeys(self):
         manifestFile = os.path.join(self.backupRoot,self.udid,'Manifest.plist')
+        
+        self.date=iOSbackup.convertTime(os.path.getmtime(manifestFile), since2001=False)
+        
         with open(manifestFile, 'rb') as infile:
             self.manifest = biplist.readPlist(infile)
 
