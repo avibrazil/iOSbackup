@@ -1,5 +1,5 @@
 import biplist
-import fastpbkdf2
+from importlib import import_module
 import struct
 import os
 import sys
@@ -7,7 +7,9 @@ import textwrap
 import pprint
 import tempfile
 import sqlite3
+import time
 from datetime import datetime, timezone
+from pathlib import Path
 import Crypto.Cipher.AES # https://www.dlitz.net/software/pycrypto/
 
 
@@ -157,7 +159,7 @@ class iOSbackup(object):
 
     def __repr__(self):
         """Prints a lot of information about an opened backup"""
-    	
+
         template=textwrap.dedent("""\
             backup root folder: {backupRoot}
             device ID: {udid}
@@ -200,8 +202,11 @@ class iOSbackup(object):
 
 
     def getDecryptionKey(self) -> str:
+        """Decryption key is tha master blob to decrypt everything in the iOS backup.
+        It is calculated by deriveKeyFromPassword() from the clear text iOS backup password.
+        """
+        
         return self.decryptionKey.hex()
-
 
 
     def getHintedBackupRoot() -> str:
@@ -326,6 +331,7 @@ class iOSbackup(object):
 
     def setDevice(self,udid=None):
         """Set the device by its UDID"""
+        
         self.udid=udid
         
         
@@ -354,6 +360,220 @@ class iOSbackup(object):
         return list
 
 
+    def getFolderDecryptedCopy(self, relativePath, targetFolder=None, temporary=False, includeDomains=None, excludeDomains=None, includeFiles=None, excludeFiles=None):
+        """Recreates an entire backup folder tree under targetFolder.
+        
+        Parameters
+        ----------
+        relativePath : str
+            Semi full path name of a backup file. Something like 'Media/PhotoData/Metadata'
+        targetFolder : str, optional
+            Folder where to store decrypted files, creates the folder tree under current folder if omitted.
+        temporary : str, optional
+            Creates a temporary file (using tempfile module) in a temporary folder. Use targetFolder if omitted.
+        includeDomains : str, list, optional
+            Retrieve files only from this single or list of iOS backup domains.
+        excludeDomains : str, list, optional
+            Retrieve files from all but this single or list of iOS backup domains.
+        includeFiles : str, list, optional
+            SQL friendly file name matches. For example "%JPG" will retrieve only files ending with JPG. Pass a list of filters to be more effective.
+        excludeFiles : str, list, optional
+            SQL friendly file name matches to exclude. For example "%MOV" will retrieve all but files ending with MOV. Pass a list of filters to be more effective.
+        
+        Returns
+        -------
+        List of dicts with info about all files retrieved.
+        """
+        
+        if not self.manifestDB:
+            raise Exception("Object not yet innitialized or can't find decrypted files catalog (Manifest.db)")
+            
+        if not relativePath:
+            return None
+        
+        if temporary:
+            targetRootFolder=tempfile.TemporaryDirectory(suffix=f"---{fileName}", dir=targetFolder)
+            targetRootFolder=targetRootFolder.name
+        else:
+            if targetFolder:
+                targetRootFolder=targetFolder
+            else:
+                targetRootFolder='.'
+        
+        additionalFilters=[]
+        
+        if includeDomains:
+            if type(includeDomains)==list:
+                additionalFilters.append('domain IN ({})'.format(','.join("'" + item + "'" for item in includeDomains)))
+            else:
+                additionalFilters.append('''domain = '{}' '''.format(includeDomains))
+
+
+        if excludeDomains:
+            if type(excludeDomains)==list:
+                additionalFilters.append('domain NOT IN ({})'.format(','.join("'" + item + "'" for item in excludeDomains)))
+            else:
+                additionalFilters.append('''domain != '{}' '''.format(excludeDomains))
+
+                
+                
+                
+                
+        if includeFiles:
+            ifiles=[]
+            if type(includeFiles)==list:
+                for i in includeFiles:
+                    ifiles.append(f"relativePath LIKE '{i}'")
+                    
+                ifiles='(' + ' OR '.join(ifiles) + ')'
+                additionalFilters.append(ifiles)
+            else:
+                additionalFilters.append(f"relativePath LIKE '{includeFiles}'")
+
+
+        if excludeFiles:
+            ifiles=[]
+            if type(excludeFiles)==list:
+                for i in excludeFiles:
+                    ifiles.append(f"relativePath NOT LIKE '{i}'")
+                    
+                ifiles='(' + ' AND '.join(ifiles) + ')'
+                additionalFilters.append(ifiles)
+            else:
+                additionalFilters.append(f"relativePath NOT LIKE '{excludeFiles}'")
+
+
+                
+                
+                
+                
+        if len(additionalFilters)>0:
+            additionalFilters.insert(0,'') # so we dont brake SQL due to lack of 'AND'
+        
+        catalog = sqlite3.connect(self.manifestDB)
+        catalog.row_factory=sqlite3.Row
+        
+        backupFiles = catalog.cursor().execute(
+            "SELECT * FROM Files WHERE relativePath LIKE '{relativePath}%%' {additionalFilters} ORDER BY domain, relativePath".format(
+                relativePath=relativePath,
+                additionalFilters=' AND '.join(additionalFilters)
+            )
+        ).fetchall()
+        
+        fileList=[]
+        for f in backupFiles:
+            info={}
+            (info,decrypted)=self.getFileDecryptedData(fileNameHash=f['fileID'],manifestData=f['file'])
+            
+            physicalTarget=os.path.join(targetRootFolder,f['domain'],f['relativePath'])
+            
+            if info['isFolder']:
+                Path(physicalTarget).mkdir(parents=True, exist_ok=True)
+            else:
+                Path(os.path.dirname(physicalTarget)).mkdir(parents=True, exist_ok=True)
+                with open(physicalTarget,'wb',info['mode']) as output:
+                    output.write(decrypted)
+
+            mtime=time.mktime(info['lastModified'].timetuple())
+            os.utime(physicalTarget,(mtime, mtime))
+
+            info['originalFilePath']=relativePath
+            info['decryptedFilePath']=physicalTarget
+            info['domain']=f['domain']
+            info['backupFile']=f['fileID']
+
+            fileList.append(info)
+            
+        catalog.close()
+        return fileList
+
+
+    
+    def getFileManifestDBEntry(self, fileNameHash=None, relativePath=None):
+        """Get the Manifest DB entry for a file either from its file name hash or relative file name.
+        File name hash is more precise because its unique, while the relative file name may appear under multiple backup domains.
+        
+        Parameters
+        ----------
+        relativePath : str
+            Semi full path name of a backup file. Something like 'Media/PhotoData/Metadata'
+        fileNameHash : str
+            Hashed filename as can be seen under iOS backup folder.
+        
+        Returns
+        -------
+        A dict with Manifest info about the file along with the file manifest.
+
+        """
+        if fileNameHash==None and relativePath==None:
+            raise Exception(f"Either fileNameHash or relativePath must be provided")
+            
+        if not self.manifestDB:
+            raise Exception("Object not yet innitialized or can't find decrypted files catalog (Manifest.db)")
+        
+        catalog = sqlite3.connect(self.manifestDB)
+        catalog.row_factory=sqlite3.Row
+
+        if relativePath:
+            backupFile = catalog.cursor().execute(f"SELECT * FROM Files WHERE relativePath='{relativePath}' ORDER BY domain LIMIT 1").fetchone()
+        else:
+            backupFile = catalog.cursor().execute(f"SELECT * FROM Files WHERE fileID='{fileNameHash}' ORDER BY domain LIMIT 1").fetchone()
+        
+        catalog.close()
+        
+        if backupFile:
+            payload=dict(backupFile)
+            payload['manifest']=biplist.readPlistFromString(payload['file'])
+        else:
+            raise Exception(f"Can't find file {relativePath} on this backup")
+
+        return payload
+        
+
+    def getFileDecryptedData(self, fileNameHash, manifestData):
+        """Given a backup file hash along with its manifest data (as returned by getFileManifestDBEntry()), returns a
+        dict of file metadata and the decrypted content of the file. This is the memory-only version of getFileDecryptedCopy().
+        """
+        if type(manifestData)==dict:
+            # Assuming this is biplist-processed plist file already converted into a dict
+            manifest=manifestData
+        elif type(manifestData)==bytes:
+            # Interpret data stream and convert into a dict
+            manifest = biplist.readPlistFromString(manifestData)
+
+        fileData=manifest['$objects'][manifest['$top']['root'].integer]
+                
+        if 'EncryptionKey' in fileData:
+            folder=False
+            
+            encryptionKey=manifest['$objects'][fileData['EncryptionKey'].integer]['NS.data'][4:]
+
+
+            # BACKUP_ROOT/UDID/ae/ae2c3d4e5f6...
+            with open(os.path.join(self.backupRoot,self.udid, fileNameHash[:2], fileNameHash), 'rb') as infile:
+                dataEncrypted = infile.read()
+
+            key = self.unwrapKeyForClass(fileData['ProtectionClass'], encryptionKey)
+            # truncate to actual length, as encryption may introduce padding
+            dataDecrypted = iOSbackup.AESdecryptCBC(dataEncrypted, key)[:fileData['Size']]
+        else:
+            dataDecrypted=None
+            folder=True
+        
+        info={
+            "size": fileData['Size'],
+            "lastModified": iOSbackup.convertTime(fileData['LastModified'], since2001=False),
+            "lastStatusChange": iOSbackup.convertTime(fileData['LastStatusChange'], since2001=False),
+            "mode": fileData['Mode'],
+            "isFolder": folder,
+            "userID": fileData['UserID'],
+            "inode": fileData['InodeNumber']
+        }
+
+        return (info, dataDecrypted)
+
+
+        
     
     def getFileDecryptedCopy(self, relativePath, targetName=None, targetFolder=None, temporary=False):
         """Returns a dict with filename of a decrypted copy of certain file along with some file information
@@ -367,71 +587,52 @@ class iOSbackup(object):
         targetFolder : str, optional
             Folder where to store decrypted file, saves on current folder if omitted.
         temporary : str, optional
-            Creates a temporary file (using tempfile module) in a temporary folder. Use targetFolder if not omitted.
+            Creates a temporary file (using tempfile module) in a temporary folder. Use targetFolder if omitted.
+        
+        Returns
+        -------
+        A dict of metadata about the file.
         """
 
-        if not self.manifestDB:
-            raise Exception("Object not yet innitialized or can't find decrypted files catalog (Manifest.db)")
-            
         if not relativePath:
             return None
-        
-        catalog = sqlite3.connect(self.manifestDB)
-        catalog.row_factory=sqlite3.Row
-        
-        backupFile = catalog.cursor().execute(f"SELECT * FROM Files WHERE relativePath='{relativePath}' ORDER BY domain LIMIT 1").fetchone()
-        
-        if backupFile:
-            manifest = biplist.readPlistFromString(backupFile['file'])
 
-            fileData=manifest['$objects'][manifest['$top']['root'].integer]
-            encryptionKey=manifest['$objects'][fileData['EncryptionKey'].integer]['NS.data'][4:]
-            
-            
-            # BACKUP_ROOT/UDID/ae/ae2c3d4e5f6...
-            with open(os.path.join(self.backupRoot,self.udid,backupFile['fileID'][:2], backupFile['fileID']), 'rb') as infile:
-                dataEncrypted = infile.read()
-                
-            key = self.unwrapKeyForClass(fileData['ProtectionClass'], encryptionKey)
-            # truncate to actual length, as encryption may introduce padding
-            dataDecrypted = iOSbackup.AESdecryptCBC(dataEncrypted, key)[:fileData['Size']]
-            
-            if targetName:
-                fileName=targetName
-            else:
-                fileName='{domain}~{modifiedPath}'.format(domain=backupFile['domain'],modifiedPath=relativePath.replace('/','--'))
-
-            if temporary:
-                targetFileName=tempfile.NamedTemporaryFile(suffix=f"---{fileName}", dir=targetFolder, delete=True)
-                targetFileName=targetFileName.name
-            else:
-                if targetFolder:
-                    targetFileName=os.path.join(targetFolder,fileName)
-                else:
-                    targetFileName=fileName
-                
-            with open(targetFileName,'wb') as output:
-                output.write(dataDecrypted)
-            
-            info={
-                "originalFilePath": relativePath,
-                "decryptedFilePath": targetFileName,
-                "domain": backupFile['domain'],
-                "backupFile": backupFile['fileID'],
-                "size": fileData['Size'],
-                "lastModified": iOSbackup.convertTime(fileData['LastModified'], since2001=False),
-                "lastStatusChange": iOSbackup.convertTime(fileData['LastStatusChange'], since2001=False),
-                "mode": fileData['Mode'],
-                "userID": fileData['UserID'],
-                "inode": fileData['InodeNumber']
-            }
-            
-            return info
+        backupFile=self.getFileManifestDBEntry(relativePath=relativePath)
+        
+        (info,dataDecrypted)=self.getFileDecryptedData(backupFile['fileID'],backupFile['manifest'])
+                        
+        if targetName:
+            fileName=targetName
         else:
-            raise Exception(f"Can't find file {relativePath} on this backup")
+            fileName='{domain}~{modifiedPath}'.format(domain=backupFile['domain'],modifiedPath=relativePath.replace('/','--'))
+
+        if temporary:
+            targetFileName=tempfile.NamedTemporaryFile(suffix=f"---{fileName}", dir=targetFolder, delete=True)
+            targetFileName=targetFileName.name
+        else:
+            if targetFolder:
+                targetFileName=os.path.join(targetFolder,fileName)
+            else:
+                targetFileName=fileName
+
+        with open(targetFileName,'wb') as output:
+            output.write(dataDecrypted)
+
+        # Add more information to the returned info dict
+        info['originalFilePath']=relativePath
+        info['decryptedFilePath']=targetFileName
+        info['domain']=backupFile['domain']
+        info['backupFile']=backupFile['fileID']
+
+        return info
             
 
     def convertTime(timeToConvert, since2001=True):
+        """Smart and static method that converts time values.
+        If timeToConvert is an integer, it is considered as UTC Unix time and will be converted to a Python datetime object with timezone set on UTC.
+        If timeToConvert is a Python datetime object, converts to UTC Unix time integer.
+        If since2001 is True (default), integer values start at 2001-01-01 00:00:00 UTC, not 1970-01-01 00:00:00 UTC (as standard Unix time).
+        """
         
         apple2001reference=datetime(2001, 1, 1, tzinfo=timezone.utc)
         
@@ -454,6 +655,7 @@ class iOSbackup(object):
     
     def getManifestDB(self):
         """Returns full path name of a decrypted copy of Manifest.db. Used internally."""
+        
         with open(os.path.join(self.backupRoot,self.udid,'Manifest.db'), 'rb') as db:
             encrypted_db = db.read()
 
@@ -509,11 +711,20 @@ class iOSbackup(object):
     
 
     def deriveKeyFromPassword(self,cleanpassword=None):
-        temp = fastpbkdf2.pbkdf2_hmac('sha256', cleanpassword,
+        # Try to use fastpbkdf2.pbkdf2_hmac().
+        # Fallback to Pythons default hashlib.pbkdf2_hmac() if not found.
+        
+        try:
+            hlib = import_module('fastpbkdf2')
+        except:
+            hlib = import_module('hashlib')
+        
+        
+        temp = hlib.pbkdf2_hmac('sha256', cleanpassword,
             self.attrs[b"DPSL"],
             self.attrs[b"DPIC"], 32)
         
-        self.decryptionKey = fastpbkdf2.pbkdf2_hmac('sha1', temp,
+        self.decryptionKey = hlib.pbkdf2_hmac('sha1', temp,
             self.attrs[b"SALT"],
             self.attrs[b"ITER"], 32)
         
