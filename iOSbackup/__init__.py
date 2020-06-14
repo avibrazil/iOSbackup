@@ -361,7 +361,7 @@ class iOSbackup(object):
 
 
     def getFolderDecryptedCopy(self, relativePath, targetFolder=None, temporary=False, includeDomains=None, excludeDomains=None, includeFiles=None, excludeFiles=None):
-        """Recreates an entire backup folder tree under targetFolder.
+        """Recreates under targetFolder an entire folder (relativePath) found into an iOS backup.
         
         Parameters
         ----------
@@ -549,13 +549,14 @@ class iOSbackup(object):
             encryptionKey=manifest['$objects'][fileData['EncryptionKey'].integer]['NS.data'][4:]
 
 
-            # BACKUP_ROOT/UDID/ae/ae2c3d4e5f6...
+            # {BACKUP_ROOT}/{UDID}/ae/ae2c3d4e5f6...
             with open(os.path.join(self.backupRoot,self.udid, fileNameHash[:2], fileNameHash), 'rb') as infile:
                 dataEncrypted = infile.read()
 
             key = self.unwrapKeyForClass(fileData['ProtectionClass'], encryptionKey)
-            # truncate to actual length, as encryption may introduce padding
-            dataDecrypted = iOSbackup.AESdecryptCBC(dataEncrypted, key)[:fileData['Size']]
+
+            # See https://github.com/avibrazil/iOSbackup/issues/1
+            dataDecrypted = iOSbackup.AESdecryptCBC(dataEncrypted, key, padding=True)
         else:
             dataDecrypted=None
             folder=True
@@ -795,6 +796,19 @@ class iOSbackup(object):
 
 
 
+
+	def removePadding(blocksize, s):
+		'Remove rfc 1423 padding from string.'
+		
+		n = ord(s[-1]) # last byte contains number of padding bytes
+		
+		if n > blocksize or n > len(s):
+			raise Exception('invalid padding')
+			
+		return s[:-n]
+
+
+
     def AESdecryptCBC(data, key, iv="\x00"*16, padding=False):
         todec = None
         
@@ -807,7 +821,8 @@ class iOSbackup(object):
         dec = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv).decrypt(todec)
         
         if padding:
-            return removePadding(16, dec)
+            return iOSbackup.removePadding(16, dec)
+            
         return dec
         
 
