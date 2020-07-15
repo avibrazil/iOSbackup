@@ -14,17 +14,9 @@ pip3 install iOSbackup --user
 
 On macOS, get native Python 3 from Apple with command `xcode-select --install`. Read my [Apple official Python 3 distribution guide](https://avi.alkalay.net/2019/12/macos-jupyter-data-science-no-anaconda.html) for more details.
 
-If installation fails, thats because of `pycrypto`. On macOS with Apple official Python 3 distribution, install `pycrypto` like this:
+`iOSbackup` requires other two packages: `biplist` and `pycryptodome` that will be installed automatically by `pip`.
 
-```shell
-CFLAGS="-I/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.7/include" \
-LDFLAGS="-L/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.7/lib" \
-pip3 install pycrypto --user
-```
-
-Then install `iOSbackup`.
-
-Other pre-requisites are `biplist` and `fastpbkdf2` that will be installed automatically by `pip`.
+`pycryptodome` has an API compatible with older `pycrypto`, which should also work with `iOSbackup`. But `pycryptodome` is more well maintained and easier to install on Windows and macOS.
 
 
 ## Usage
@@ -144,20 +136,6 @@ This will exclude videos from restoration.
 	includeDomains='CameraRollDomain',
 	excludeFiles='%.MOV'
 )
-```
-
-## Pre-requisites
-
-```shell
-pip3 install biplist --user
-pip3 install fastpbkdf2 --user
-```
-
-On macOS with [Apple official Python 3 distribution](https://avi.alkalay.net/2019/12/macos-jupyter-data-science-no-anaconda.html), install `pycrypto` like this:
-```shell
-CFLAGS="-I/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.7/include" \
-LDFLAGS="-L/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.7/lib" \
-pip3 install pycrypto --user
 ```
 
 ## Apple-native Python 3 Installation on Macs
