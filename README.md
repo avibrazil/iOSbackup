@@ -72,13 +72,12 @@ Forcing a backup folder, useful when reading backups on Linux, where there is no
 >>> b=iOSbackup(
 	udid="00456030-000E4412342802E",
 	cleartextpassword="mypassword",
-	backuproot="/home/myuser/itunesfiles"
+	backuproot='/media/sf_username/Library/Application Support/MobileSync/Backup'
 )
 ```
-
-For this to work on a Linux virtual machine, you'll have to grant full disk access to your VM (VirtualBox etc).
-On macOS, go to System Preferences ➔ Security & Privacy ➔ Privacy ➔ Full Disk Access and enable access to your hypervisor (VirtualBox etc).
-The hypervisor (VM etc) will have to be restarted for the settings to be effective.
+For this to work on a Linux virtual machine accessing a VirtualBox-shared folder, you'll have to grant full disk access to your hypervisor (VirtualBox etc).
+On macOS, go to *System Preferences* ➔ *Security & Privacy* ➔ *Privacy* ➔ *Full Disk Access* and enable access to your hypervisor (VirtualBox etc).
+The hypervisor and VM will have to be restarted for the new setting to be effective.
 
 ### Get a list of backed-up files:
 ```python
