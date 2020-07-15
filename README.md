@@ -134,7 +134,12 @@ Read decrypted copy of call history database:
 ### Restore Entire Photos Folder
 This will exclude videos from restoration.
 ```python
->>> b.getFolderDecryptedCopy('Media', targetFolder='restored-photos', includeDomains='CameraRollDomain', excludeFiles='%.MOV')
+>>> b.getFolderDecryptedCopy(
+	'Media',
+	targetFolder='restored-photos',
+	includeDomains='CameraRollDomain',
+	excludeFiles='%.MOV'
+)
 ```
 
 ## Pre-requisites
