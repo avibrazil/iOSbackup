@@ -49,8 +49,18 @@ With your password (a lengthy process):
 	cleartextpassword="mypassword"
 )
 ```
-
-Or with a saved derived key (much faster):
+Instead of a clear text password, use a derived key that can be seen into the instantiated object:
+```python
+>>> b=iOSbackup(
+	udid="00456030-000E4412342802E",
+	cleartextpassword="mypassword"
+)
+>>> print(b)
+…
+decryptionKey: dd6b6123494c5dbdff7804321fe43ffe1babcdb6074014afedc7cb47f351524
+…
+```
+From now on use your derived key instead of your clear text password to not expose it and because it is much faster:
 ```python
 >>> b=iOSbackup(
 	udid="00456030-000E4412342802E",
