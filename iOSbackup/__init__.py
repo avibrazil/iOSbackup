@@ -10,7 +10,14 @@ import sqlite3
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-import Crypto.Cipher.AES # https://www.dlitz.net/software/pycrypto/
+
+try:
+	from Cryptodome.Cipher import AES
+except:
+	from Crypto.Cipher import AES # https://www.dlitz.net/software/pycrypto/
+
+
+__version__ = '0.9.901'
 
 
 class iOSbackup(object):
@@ -118,14 +125,14 @@ class iOSbackup(object):
         Parameters
         ----------
         backuproot : str, optional
-        	Full path of folder that contains device backups. Uses platformFoldersHint if omitted.
+            Full path of folder that contains device backups. Uses platformFoldersHint if omitted.
         udid : str
-        	The UDID (and folder name) of device that you want to access its backup.
+            The UDID (and folder name) of device that you want to access its backup.
         cleartextpassword : str, optional
-        	User's backup password as provided to iTunes on backup creation time.
+            User's backup password as provided to iTunes on backup creation time.
         derivedkey : str, optional
-        	The master backup decryption key derived directly from user's backup password.
-        	Use it instead of cleartextpassword to save time and to not reveal your password.
+            The master backup decryption key derived directly from user's backup password.
+            Use it instead of cleartextpassword to save time and to not reveal your password.
         """
         self.setBackupRoot(backuproot)
         self.udid = udid
@@ -295,7 +302,7 @@ class iOSbackup(object):
             
             return list
         else:
-            raise Exception("Need valid backup root folder path.")
+            raise Exception("Need valid backup root folder path passed through `backuproot`.")
 
 
 
@@ -325,7 +332,7 @@ class iOSbackup(object):
 
             return list
         else:
-            raise Exception("Need valid backup root folder path.")
+            raise Exception("Need valid backup root folder path passed through `backuproot`.")
 
 
 
@@ -525,7 +532,8 @@ class iOSbackup(object):
             payload=dict(backupFile)
             payload['manifest']=biplist.readPlistFromString(payload['file'])
         else:
-            raise Exception(f"Can't find file {relativePath} on this backup")
+#             raise Exception(f"Can't find file {relativePath} on this backup")
+            raise(FileNotFoundError(f"Can't find file «{relativePath}» on this backup"))
 
         return payload
         
@@ -785,7 +793,7 @@ class iOSbackup(object):
             for i in reversed(range(1,n+1)):
                 todec = iOSbackup.pack64bit(A ^ (n*j+i))
                 todec += iOSbackup.pack64bit(R[i])
-                B = Crypto.Cipher.AES.new(key).decrypt(todec)
+                B = AES.new(key, AES.MODE_ECB).decrypt(todec)
                 A = iOSbackup.unpack64bit(B[:8])
                 R[i] = iOSbackup.unpack64bit(B[8:])
 
@@ -797,28 +805,26 @@ class iOSbackup(object):
 
 
 
-	def removePadding(blocksize, s):
-		'Remove rfc 1423 padding from string.'
-		
-		n = ord(s[-1]) # last byte contains number of padding bytes
-		
-		if n > blocksize or n > len(s):
-			raise Exception('invalid padding')
-			
-		return s[:-n]
+    def removePadding(blocksize, s):
+        'Remove RFC1423 padding from string.'
+        
+        n = s[-1] # last byte contains number of padding bytes
+        
+        if n > blocksize or n > len(s):
+            raise Exception('invalid padding')
+            
+        return s[:-n]
 
 
 
-    def AESdecryptCBC(data, key, iv="\x00"*16, padding=False):
-        todec = None
+    def AESdecryptCBC(data, key, iv=b'\x00'*16, padding=False):
+        todec = data
         
         if len(data) % 16:
 #             print("AESdecryptCBC: data length not /16, truncating")
-            todec=data[0:(len(data)/16) * 16]
-        else:
-            todec=data
+            todec = data[0:(len(data)/16) * 16]
     
-        dec = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv).decrypt(todec)
+        dec = AES.new(key, AES.MODE_CBC, iv).decrypt(todec)
         
         if padding:
             return iOSbackup.removePadding(16, dec)

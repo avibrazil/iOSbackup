@@ -1,18 +1,19 @@
 import setuptools
+from iOSbackup import __version__
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="iOSbackup",
-    version="0.9.8",
+    version=__version__,
     author="Avi Alkalay",
     author_email="avibrazil@gmail.com",
     description="Reads and extracts files from password-encrypted iOS backups",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/avibrazil/iOSbackup",
-    install_requires=['biplist','pycrypto'],
+    install_requires=['biplist','pycryptodome'],
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
