@@ -65,6 +65,7 @@ Or with a saved derived key (much faster):
 	derivedkey="dd6b6123494c5dbdff7804321fe43ffe1babcdb6074014afedc7cb47f351524"
 )
 ```
+### Linux virtual machine accessing iOS backup on a macOS host
 
 Forcing a backup folder, useful when reading backups on Linux, where there is no standard for backup folders:
 ```python
@@ -74,6 +75,10 @@ Forcing a backup folder, useful when reading backups on Linux, where there is no
 	backuproot="/home/myuser/itunesfiles"
 )
 ```
+
+For this to work on a Linux virtual machine, you'll have to grant full disk access to your VM (VirtualBox etc).
+On macOS, go to System Preferences ➔ Security & Privacy ➔ Privacy ➔ Full Disk Access and enable access to your hypervisor (VirtualBox etc).
+The hypervisor (VM etc) will have to be restarted for the settings to be effective.
 
 ### Get a list of backed-up files:
 ```python
