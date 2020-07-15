@@ -52,20 +52,30 @@ Other pre-requisites are `biplist` and `fastpbkdf2` that will be installed autom
 
 With your password (a lengthy process):
 ```python
->>> b=iOSbackup(udid="00456030-000E4412342802E", cleartextpassword="mypassword")
+>>> b=iOSbackup(
+	udid="00456030-000E4412342802E",
+	cleartextpassword="mypassword"
+)
 ```
 
 Or with a saved derived key (much faster):
 ```python
->>> b=iOSbackup(udid="00456030-000E4412342802E", derivedkey="dd6b6123494c5dbdff7804321fe43ffe1babcdb6074014afedc7cb47f351524")
+>>> b=iOSbackup(
+	udid="00456030-000E4412342802E",
+	derivedkey="dd6b6123494c5dbdff7804321fe43ffe1babcdb6074014afedc7cb47f351524"
+)
 ```
 
 Forcing a backup folder, useful when reading backups on Linux, where there is no standard for backup folders:
 ```python
->>> b=iOSbackup(udid="00456030-000E4412342802E", cleartextpassword="mypassword", backuproot="/home/myuser/itunesfiles")
+>>> b=iOSbackup(
+	udid="00456030-000E4412342802E",
+	cleartextpassword="mypassword",
+	backuproot="/home/myuser/itunesfiles"
+)
 ```
 
-Get a list of backed-up files:
+### Get a list of backed-up files:
 ```python
 >>> b.getBackupFilesList()
 [{'name': '',
@@ -103,7 +113,7 @@ With Pandas, display only list of files in `HomeDomain` group:
 >>> backupfiles[backupfiles['domain']=='HomeDomain']
 ```
 
-Get a decrypted copy of the call history SQLite database:
+### Get a decrypted copy of the call history SQLite database:
 ```python
 >>> file=b.getFileDecryptedCopy(relativePath="Library/CallHistoryDB/CallHistory.storedata")
 >>> file
@@ -119,6 +129,12 @@ Read decrypted copy of call history database:
 >>> calls = sqlite3.connect(file.decryptedFilePath)
 >>> calls.row_factory=sqlite3.Row
 >>> calllog = calls.cursor().execute(f"SELECT * FROM ZCALLRECORD ORDER BY ZDATE DESC").fetchall()
+```
+
+### Restore Entire Photos Folder
+This will exclude videos from restoration.
+```python
+>>> b.getFolderDecryptedCopy('Media', targetFolder='restored-photos', includeDomains='CameraRollDomain', excludeFiles='%.MOV')
 ```
 
 ## Pre-requisites
