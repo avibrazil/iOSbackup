@@ -12,12 +12,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 try:
-	from Cryptodome.Cipher import AES
+    from Cryptodome.Cipher import AES
 except:
-	from Crypto.Cipher import AES # https://www.dlitz.net/software/pycrypto/
+    from Crypto.Cipher import AES # https://www.dlitz.net/software/pycrypto/
 
 
-__version__ = '0.9.901'
+__version__ = '0.9.902'
 
 
 class iOSbackup(object):
@@ -221,7 +221,7 @@ class iOSbackup(object):
         
         for plat in iOSbackup.platformFoldersHint.keys():
             if sys.platform.startswith(plat):
-                return os.path.expanduser(iOSbackup.platformFoldersHint[plat])
+                return os.path.expanduser(os.path.expandvars(iOSbackup.platformFoldersHint[plat]))
         return None
 
 
@@ -235,7 +235,7 @@ class iOSbackup(object):
         """
 
         if path:
-            self.backupRoot=os.path.expanduser(path)
+            self.backupRoot=os.path.expanduser(os.path.expandvars(path))
         else:
             self.backupRoot=iOSbackup.getHintedBackupRoot()
 
@@ -367,7 +367,7 @@ class iOSbackup(object):
         return list
 
 
-    def getFolderDecryptedCopy(self, relativePath, targetFolder=None, temporary=False, includeDomains=None, excludeDomains=None, includeFiles=None, excludeFiles=None):
+    def getFolderDecryptedCopy(self, relativePath=None, targetFolder=None, temporary=False, includeDomains=None, excludeDomains=None, includeFiles=None, excludeFiles=None):
         """Recreates under targetFolder an entire folder (relativePath) found into an iOS backup.
         
         Parameters
@@ -396,7 +396,9 @@ class iOSbackup(object):
             raise Exception("Object not yet innitialized or can't find decrypted files catalog (Manifest.db)")
             
         if not relativePath:
-            return None
+            relativePath=''
+            if not includeDomains:
+                raise Exception("relativePath and includeDomains cannot be empty at the same time")
         
         if temporary:
             targetRootFolder=tempfile.TemporaryDirectory(suffix=f"---{fileName}", dir=targetFolder)
@@ -460,13 +462,13 @@ class iOSbackup(object):
         catalog = sqlite3.connect(self.manifestDB)
         catalog.row_factory=sqlite3.Row
         
-        backupFiles = catalog.cursor().execute(
-            "SELECT * FROM Files WHERE relativePath LIKE '{relativePath}%%' {additionalFilters} ORDER BY domain, relativePath".format(
-                relativePath=relativePath,
-                additionalFilters=' AND '.join(additionalFilters)
-            )
-        ).fetchall()
-        
+        query="SELECT * FROM Files WHERE relativePath LIKE '{relativePath}%' {additionalFilters} ORDER BY domain, relativePath".format(
+            relativePath=relativePath,
+            additionalFilters=' AND '.join(additionalFilters)
+        )
+                
+        backupFiles = catalog.cursor().execute(query).fetchall()
+                
         fileList=[]
         for f in backupFiles:
             info={}
@@ -532,7 +534,6 @@ class iOSbackup(object):
             payload=dict(backupFile)
             payload['manifest']=biplist.readPlistFromString(payload['file'])
         else:
-#             raise Exception(f"Can't find file {relativePath} on this backup")
             raise(FileNotFoundError(f"Can't find file «{relativePath}» on this backup"))
 
         return payload
