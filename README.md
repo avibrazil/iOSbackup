@@ -138,7 +138,8 @@ Read decrypted copy of call history database:
 ```
 
 ### Restore Entire Folder Containing _Photos_ and their Metadata
-This will exclude videos from restoration.
+This content is located in the `Media` folder of `CameraRollDomain` domain.
+This example will exclude videos from restoration.
 ```python
 >>> b.getFolderDecryptedCopy(
 	'Media',
@@ -176,10 +177,10 @@ This will exclude videos from restoration.
  'net.whatsapp.WhatsApp']
 ```
 
-### Restore All Files of Apps, Groups and Pluging Matching “_whatsapp_”
-I had to use previous method to find the list of app IDs and see that “_whatsapp_” is a good word to find them.
+### Restore All Files of Apps, Groups and Plugins Matching “_whatsapp_”
+I had to use previous method to find the list of app IDs and see that “_whatsapp_” is a good word to match them.
 Each app component has its own backup domain prefixed by `AppDomain`, `AppDomainGroup` or `AppDomainPlugin`.
-So we'll iterate over all possibilities of fabricated domain names using `getFolderDecryptedCopy()`.
+So we'll iterate over all possibilities of fabricated domain names with `getFolderDecryptedCopy()`.
 ```python
 for id in [s for s in list(b.manifest['Applications'].keys()) if "whatsapp" in s]:
     for prefix in ["AppDomain", "AppDomainGroup", "AppDomainPlugin"]:
