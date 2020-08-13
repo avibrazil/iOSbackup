@@ -12,9 +12,9 @@ You should always prefer encrypted backups because they are more secure and incl
 pip3 install iOSbackup --user
 ```
 
-On macOS, get native Python 3 from Apple with command `xcode-select --install`. Read my [Apple official Python 3 distribution guide](https://avi.alkalay.net/2019/12/macos-jupyter-data-science-no-anaconda.html) for more details.
+On macOS, get native Python 3 from Apple with command `xcode-select --install`. Read my [guide to install Apple official Python 3 distribution](https://avi.alkalay.net/2019/12/macos-jupyter-data-science-no-anaconda.html) for more details.
 
-`iOSbackup` requires other two packages: `biplist` and `pycryptodome` that will be installed automatically by `pip`.
+`iOSbackup` requires other two packages: `biplist` and `pycryptodome` that will be [installed automatically by `pip`](https://pypi.org/project/iOSbackup/).
 
 `pycryptodome` has an API compatible with older `pycrypto`, which should also work with `iOSbackup`. But `pycryptodome` is more well maintained and easier to install on Windows and macOS.
 
@@ -137,7 +137,7 @@ Read decrypted copy of call history database:
 >>> calllog = calls.cursor().execute(f"SELECT * FROM ZCALLRECORD ORDER BY ZDATE DESC").fetchall()
 ```
 
-### Restore Entire Photos Folder
+### Restore Entire Folder Containing _Photos_ and their Metadata
 This will exclude videos from restoration.
 ```python
 >>> b.getFolderDecryptedCopy(
