@@ -42,7 +42,7 @@ On macOS, get native Python 3 from Apple with command `xcode-select --install`. 
 
 ### Open a device backup
 
-With your password (a lengthy process):
+With your password (a slow and compute-intensive task):
 ```python
 >>> b=iOSbackup(
 	udid="00456030-000E4412342802E",
