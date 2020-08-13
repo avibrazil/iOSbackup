@@ -186,6 +186,12 @@ for id in [s for s in list(b.manifest['Applications'].keys()) if "whatsapp" in s
     for prefix in ["AppDomain", "AppDomainGroup", "AppDomainPlugin"]:
         b.getFolderDecryptedCopy(includeDomains=prefix + '-' + id)
 ```
+Other apps might have a less intuitive name. For example, Telegram can be matched by “_telegra_” (without ‘m’):
+```python
+for id in [s for s in list(b.manifest['Applications'].keys()) if "telegra" in s]:
+    for prefix in ["AppDomain", "AppDomainGroup", "AppDomainPlugin"]:
+        b.getFolderDecryptedCopy(includeDomains=prefix + '-' + id)
+```
 
 ## Apple-native Python 3 Installation on Macs
 
