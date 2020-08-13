@@ -148,6 +148,44 @@ This will exclude videos from restoration.
 )
 ```
 
+### Get List of All Installed Apps
+```python
+>>> apps=list(b.manifest['Applications'].keys())
+>>> apps
+['group.com.apple.Maps',
+ 'group.net.whatsapp.family',
+ 'it.joethefox.XBMC-Remote',
+ 'com.google.GoogleMobile.NotificationContentExtension',
+ 'group.com.dendrocom.uniconsole',
+ ...
+]
+```
+
+### Get List of All Apps, Groups and Plugins with “_whatsapp_” In Their Name
+```python
+>>> [s for s in list(b.manifest['Applications'].keys()) if "whatsapp" in s]
+['group.net.whatsapp.WhatsApp.shared',
+ 'net.whatsapp.WhatsApp.ShareExtension',
+ 'group.net.whatsapp.WhatsAppSMB.shared',
+ 'net.whatsapp.WhatsApp.NotificationExtension',
+ 'net.whatsapp.WhatsApp.Intents',
+ 'net.whatsapp.WhatsApp.TodayExtension',
+ 'net.whatsapp.WhatsApp.IntentsUI',
+ 'group.net.whatsapp.WhatsApp.private',
+ 'net.whatsapp.WhatsApp.ServiceExtension',
+ 'net.whatsapp.WhatsApp']
+```
+
+### Restore All Files of Apps, Groups and Pluging Matching “_whatsapp_”
+I had to use previous method to find the list of app IDs and see that “_whatsapp_” is a good word to find them.
+Each app component has its own backup domain prefixed by `AppDomain`, `AppDomainGroup` or `AppDomainPlugin`.
+So we'll iterate over all possibilities of fabricated domain names using `getFolderDecryptedCopy()`.
+```python
+for id in [s for s in list(b.manifest['Applications'].keys()) if "whatsapp" in s]:
+    for prefix in ["AppDomain", "AppDomainGroup", "AppDomainPlugin"]:
+        b.getFolderDecryptedCopy(includeDomains=prefix + '-' + id)
+```
+
 ## Apple-native Python 3 Installation on Macs
 
 Follow my guide at https://avi.alkalay.net/2019/12/macos-jupyter-data-science-no-anaconda.html
@@ -159,6 +197,8 @@ Basically use command `xcode-select --install` to get Python 3 installed and upd
 Domain | Contains
 --- | ---
 **AppDomain-...** | Backup of each installed app's files
+**AppDomainGroup-...** | Backup of each installed app's files
+**AppDomainPlugin-...** | Backup of each installed app's files
 **CameraRollDomain** | Photos
 **DatabaseDomain** |
 **HealthDomain** | Health app databases
