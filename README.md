@@ -83,6 +83,11 @@ The hypervisor and VM will have to be restarted for the new setting to be effect
 
 You can also copy your device's backup folder, from a Windows or macOS computer, to a Linux computer, and then use this class on Linux to decrypt and read it.
 
+### iTunes default backup folders on Windows and macOS
+
+Files app (formerly iTunes) on macOS stores backups of associated devices under `~/Library/Application Support/MobileSync/Backup`.
+iTunes on Windows stores backups of associated devices under `%HOME%\Apple Computer\MobileSync\Backup`
+
 ### Get a list of backed-up files:
 ```python
 >>> b.getBackupFilesList()
