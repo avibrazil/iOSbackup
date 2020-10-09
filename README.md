@@ -81,6 +81,8 @@ For this to work on a Linux virtual machine accessing a VirtualBox-shared folder
 On macOS, go to *System Preferences* ➔ *Security & Privacy* ➔ *Privacy* ➔ *Full Disk Access* and enable access to your hypervisor (VirtualBox etc).
 The hypervisor and VM will have to be restarted for the new setting to be effective.
 
+You can also copy your device's backup folder, from a Windows or macOS computer, to a Linux computer, and then use this class on Linux to decrypt and read it.
+
 ### Get a list of backed-up files:
 ```python
 >>> b.getBackupFilesList()
