@@ -559,7 +559,7 @@ class iOSbackup(object):
 
 
             # {BACKUP_ROOT}/{UDID}/ae/ae2c3d4e5f6...
-            with open(os.path.join(self.backupRoot,self.udid, fileNameHash[:2], fileNameHash), 'rb') as infile:
+            with open(os.path.join(self.backupRoot, self.udid, fileNameHash[:2], fileNameHash), 'rb') as infile:
                 dataEncrypted = infile.read()
 
             key = self.unwrapKeyForClass(fileData['ProtectionClass'], encryptionKey)
@@ -577,7 +577,8 @@ class iOSbackup(object):
             "mode": fileData['Mode'],
             "isFolder": folder,
             "userID": fileData['UserID'],
-            "inode": fileData['InodeNumber']
+            "inode": fileData['InodeNumber'],
+            "completeManifest": manifest
         }
 
         return (info, dataDecrypted)
