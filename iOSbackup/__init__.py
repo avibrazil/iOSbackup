@@ -630,6 +630,10 @@ class iOSbackup(object):
         with open(targetFileName,'wb') as output:
             output.write(dataDecrypted)
 
+        # Set file modification date and localtime time as per device's
+        mtime=time.mktime(info['lastModified'].astimezone(tz=None).timetuple())
+        os.utime(targetFileName,(mtime, mtime))
+
         # Add more information to the returned info dict
         info['originalFilePath']=relativePath
         info['decryptedFilePath']=targetFileName
