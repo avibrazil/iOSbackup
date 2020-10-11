@@ -483,7 +483,7 @@ class iOSbackup(object):
                 with open(physicalTarget,'wb',info['mode']) as output:
                     output.write(decrypted)
 
-            mtime=time.mktime(info['lastModified'].timetuple())
+            mtime=time.mktime(info['lastModified'].astimezone(tz=None).timetuple())
             os.utime(physicalTarget,(mtime, mtime))
 
             info['originalFilePath']=relativePath
@@ -572,6 +572,7 @@ class iOSbackup(object):
         
         info={
             "size": fileData['Size'],
+            "created": iOSbackup.convertTime(fileData['Birth'], since2001=False),
             "lastModified": iOSbackup.convertTime(fileData['LastModified'], since2001=False),
             "lastStatusChange": iOSbackup.convertTime(fileData['LastStatusChange'], since2001=False),
             "mode": fileData['Mode'],
