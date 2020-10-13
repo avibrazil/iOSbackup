@@ -88,6 +88,33 @@ You can also copy your device's backup folder, from a Windows or macOS computer,
 Files app (formerly iTunes) on macOS stores backups of associated devices under `~/Library/Application Support/MobileSync/Backup`.
 iTunes on Windows stores backups of associated devices under `%HOME%\Apple Computer\MobileSync\Backup`
 
+### Get some info about device on the backup
+
+```python
+b=iOSbackup(...)
+
+# Device info
+b.manifest['Lockdown']['DeviceName'] # device name or hostname
+b.manifest['Lockdown']['ProductVersion'] # iOS version as 14.0.1, see Version column of https://en.wikipedia.org/wiki/IOS_version_history#Version_history
+b.manifest['Lockdown']['BuildVersion'] # iOS version as 18A393, see Build column of https://en.wikipedia.org/wiki/IOS_version_history#Version_history
+b.manifest['Lockdown']['SerialNumber'] # device serial number
+b.manifest['Lockdown']['ProductType'] # device type as iPhone12,3, see columns Identifier of https://www.theiphonewiki.com/wiki/Models
+b.udid # UDID of the device
+b.uuid.hex() # UUID of device
+
+# Backup info
+b.backupRoot # backup root folder
+b.date # UTC date and time of this backup
+b.getDecryptionKey() # password-derived key of backup
+b.manifest['IsEncrypted'] # is it an encrypted backup?
+b.manifest['WasPasscodeSet'] # backup has a passcode?
+
+# Dive into device content
+b.manifest['ManifestKey'].hex() # manifest DB decryption key
+b.manifest['Applications'] # list of installed apps
+b.manifestDB # decrypted copy of Manifest.db file
+```
+
 ### Get a list of backed-up files:
 ```python
 >>> b.getBackupFilesList()
