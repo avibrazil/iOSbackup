@@ -112,7 +112,7 @@ b.manifest['WasPasscodeSet'] # backup has a passcode?
 # Dive into device content
 b.manifest['ManifestKey'].hex() # manifest DB decryption key
 b.manifest['Applications'] # list of installed apps
-b.manifestDB # decrypted copy of Manifest.db file
+b.manifestDB # decrypted copy of Manifest.db SQLite database
 ```
 
 ### Get a list of backed-up files:
