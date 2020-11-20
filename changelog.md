@@ -1,5 +1,10 @@
 # Changelog for iOSbackup
 
+## v0.9.904...v0.9.903
+* New method getRelativePathDecryptedData
+* doc section about basic device and backup info
+* script to generate changelog from git-log
+
 ## v0.9.903...v0.9.902
 * getFileDecryptedCopy() now sets file modification time corretcly to what is on device, localtime
 * getFolderDecryptedCopy() sets files modification time as localtime, not UTC anymore
