@@ -144,7 +144,7 @@ b.manifestDB # decrypted copy of Manifest.db SQLite database
 
 Or put it directly into a Pandas DataFrame for easier manipulation and searching:
 ```python
-import pandas as pd
+>>> import pandas as pd
 >>> backupfiles=pd.DataFrame(b.getBackupFilesList(), columns=['backupFile','domain','name'])
 ```
 
