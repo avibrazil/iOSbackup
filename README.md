@@ -183,6 +183,25 @@ This example will exclude videos from restoration.
 )
 ```
 
+### Restore an entire backup domain
+Here we restore all files of `WirelessDomain` in a hierarchy starting at local directory:
+```python
+>>> b.getFolderDecryptedCopy(
+	includeDomains='WirelessDomain',
+	excludeFiles='%.MOV'
+)
+```
+Here we restore all files of `HomeDomain` in a hierarchy starting at folder `my-folder`:
+```python
+>>> b.getFolderDecryptedCopy(
+	includeDomains='HomeDomain',
+	targetFolder='my-folder',
+	excludeFiles='%.MOV'
+)
+```
+To restore all backed up data files of an app, search for its domain name (see below) and use this technique.
+
+
 ### Get List of All Installed Apps
 ```python
 >>> apps=list(b.manifest['Applications'].keys())
