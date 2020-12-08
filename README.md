@@ -188,7 +188,6 @@ Here we restore all files of `WirelessDomain` in a hierarchy starting at local d
 ```python
 >>> b.getFolderDecryptedCopy(
 	includeDomains='WirelessDomain',
-	excludeFiles='%.MOV'
 )
 ```
 Here we restore all files of `HomeDomain` in a hierarchy starting at folder `my-folder`:
@@ -196,7 +195,6 @@ Here we restore all files of `HomeDomain` in a hierarchy starting at folder `my-
 >>> b.getFolderDecryptedCopy(
 	includeDomains='HomeDomain',
 	targetFolder='my-folder',
-	excludeFiles='%.MOV'
 )
 ```
 To restore all backed up data files of an app, search for its domain name (see below) and use this technique.
