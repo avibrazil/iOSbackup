@@ -89,11 +89,27 @@ Files app (formerly iTunes) on macOS stores backups of associated devices under 
 iTunes on Windows stores backups of associated devices under `%HOME%\Apple Computer\MobileSync\Backup`
 
 ### Get some info about device on the backup
+Information about device, model, serial number, its SIMs, iOS version etc can be inspected in
+multiple places from backup basic catalog files (plist files), even before diving into its
+vast amount of databases and other encrypted files.
 
 ```python
 b=iOSbackup(...)
 
 # Device info
+infoKeys=[
+	# This is a non-exaustive list of interesting info, but there are more...
+	'Build Version', 'Device Name', 'Display Name', 'GUID', 'ICCID', 'ICCID 2',
+	'IMEI', 'IMEI 2', 'Last Backup Date', 'MEID', 'Phone Number', 'Phone Number 2',
+	'Product Name', 'Product Type', 'Product Version', 'Serial Number',
+	'Target Identifier', 'Target Type', 'Unique Identifier',
+	'macOS Build Version', 'macOS Version'
+]
+for i in infoKeys:
+	print(f'{i}: {b.info[i]}')
+
+
+# Other ways to get device info
 b.manifest['Lockdown']['DeviceName'] # device name or hostname
 b.manifest['Lockdown']['ProductVersion'] # iOS version as 14.0.1, see Version column of https://en.wikipedia.org/wiki/IOS_version_history#Version_history
 b.manifest['Lockdown']['BuildVersion'] # iOS version as 18A393, see Build column of https://en.wikipedia.org/wiki/IOS_version_history#Version_history
@@ -108,6 +124,14 @@ b.date # UTC date and time of this backup
 b.getDecryptionKey() # password-derived key of backup
 b.manifest['IsEncrypted'] # is it an encrypted backup?
 b.manifest['WasPasscodeSet'] # backup has a passcode?
+b.status
+
+
+# Basic list of installed apps, probably used by iTunes to easily display things to users
+b.info['Applications'].keys()
+
+# Apps icons
+png_data=b.info['Applications']['com.burbn.instagram']['PlaceholderIcon']
 
 # Dive into device content
 b.manifest['ManifestKey'].hex() # manifest DB decryption key
@@ -168,7 +192,7 @@ The name of decrypted file (temporary or not) can be found in the `decryptedFile
  'size': 1228800}
 ```
 
-Read decrypted copy of call history database:
+Fetch call records from the decrypted copy of call history database, using a SQL query.
 ```python
 >>> calls = sqlite3.connect(file['decryptedFilePath'])
 >>> calls.row_factory=sqlite3.Row

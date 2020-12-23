@@ -1,4 +1,5 @@
-import biplist
+import biplist # binary only
+import plistlib # plain text only
 from importlib import import_module
 import struct
 import os
@@ -109,9 +110,16 @@ class iOSbackup(object):
 
     # Most crypto code here from https://stackoverflow.com/a/13793043/367824
 
-    platformFoldersHint={
+    platformFoldersHint = {
         'darwin': '~/Library/Application Support/MobileSync/Backup',
         'win32': r'%HOME%\Apple Computer\MobileSync\Backup'
+    }
+
+    catalog = {
+        'manifest': 'Manifest.plist',
+        'manifestDB': 'Manifest.db',
+        'info': 'Info.plist',
+        'status': 'Status.plist'
     }
 
     WRAP_PASSCODE = 2
@@ -120,6 +128,9 @@ class iOSbackup(object):
 
     def __del__(self):
         os.remove(self.manifestDB)
+
+
+
 
     def __init__(self, udid, cleartextpassword=None, derivedkey=None, backuproot=None):
         """Constructor that delivers an initialized and usable instance of the class.
@@ -148,6 +159,7 @@ class iOSbackup(object):
         self.manifestDB = None
 
 
+        self.loadManifest()
         self.loadKeys()
 
         if derivedkey:
@@ -159,10 +171,14 @@ class iOSbackup(object):
         if cleartextpassword:
             self.deriveKeyFromPassword(cleartextpassword.encode('utf-8'))
 
-        # Need password set before trying to unlock keys...
+        # Now that we have backup password set as primary decryption key...
+
+        # 1. Get decryption keys for everything else
         self.unlockKeys()
 
+        # 2. Get master catalog of backup files (a SQLite database)
         self.getManifestDB()
+
 
 
 
@@ -210,12 +226,15 @@ class iOSbackup(object):
 
 
 
+
     def getDecryptionKey(self) -> str:
         """Decryption key is tha master blob to decrypt everything in the iOS backup.
         It is calculated by deriveKeyFromPassword() from the clear text iOS backup password.
         """
 
         return self.decryptionKey.hex()
+
+
 
 
     def getHintedBackupRoot() -> str:
@@ -225,6 +244,8 @@ class iOSbackup(object):
             if sys.platform.startswith(plat):
                 return os.path.expanduser(os.path.expandvars(iOSbackup.platformFoldersHint[plat]))
         return None
+
+
 
 
     def setBackupRoot(self, path=None):
@@ -242,8 +263,11 @@ class iOSbackup(object):
             self.backupRoot=iOSbackup.getHintedBackupRoot()
 
 
+
+
     def getDeviceBasicInfo(udid=None, backuproot=None):
         """Static method that returns a dict of basic info about a device and its backup.
+        Used by getDeviceList().
 
         Parameters
         ----------
@@ -259,23 +283,25 @@ class iOSbackup(object):
             root=iOSbackup.getHintedBackupRoot()
 
         if udid and root:
-            manifestFile = os.path.join(root,udid,'Manifest.plist')
+            manifestFile = os.path.join(root, udid, iOSbackup.catalog['manifest'])
+            info={}
             with open(manifestFile, 'rb') as infile:
                 manifest = biplist.readPlist(infile)
-                info={
-                    "udid": udid,
-                    "name": manifest['Lockdown']['DeviceName'],
-                    "ios": manifest['Lockdown']['ProductVersion'],
-                    "serial": manifest['Lockdown']['SerialNumber'],
-                    "type": manifest['Lockdown']['ProductType'],
-                    "encrypted": manifest['IsEncrypted'],
-                    "passcodeSet": manifest['WasPasscodeSet'],
-                    "date": iOSbackup.convertTime(os.path.getmtime(manifestFile), since2001=False)
-                }
+            info={
+                "udid": udid,
+                "name": manifest['Lockdown']['DeviceName'],
+                "ios": manifest['Lockdown']['ProductVersion'],
+                "serial": manifest['Lockdown']['SerialNumber'],
+                "type": manifest['Lockdown']['ProductType'],
+                "encrypted": manifest['IsEncrypted'],
+                "passcodeSet": manifest['WasPasscodeSet'],
+                "date": iOSbackup.convertTime(os.path.getmtime(manifestFile), since2001=False),
+            }
         else:
             raise Exception("Need valid backup root folder path and a device UDID.")
 
         return info
+
 
 
 
@@ -338,6 +364,7 @@ class iOSbackup(object):
 
 
 
+
     def setDevice(self,udid=None):
         """Set the device by its UDID"""
 
@@ -345,11 +372,12 @@ class iOSbackup(object):
 
 
 
+
     def getBackupFilesList(self):
         """Returns a dict with all device backup files catalogued in its Manifest.db"""
 
         if not self.manifestDB:
-            raise Exception("Object not yet innitialized or can't find decrypted files catalog (Manifest.db)")
+            raise Exception("Object not yet innitialized or can't find decrypted files catalog ({})".format(iOSbackup.catalog['manifestDB']))
 
         catalog = sqlite3.connect(self.manifestDB)
         catalog.row_factory=sqlite3.Row
@@ -367,6 +395,8 @@ class iOSbackup(object):
             list.append(info)
 
         return list
+
+
 
 
     def getFolderDecryptedCopy(self, relativePath=None, targetFolder=None, temporary=False, includeDomains=None, excludeDomains=None, includeFiles=None, excludeFiles=None):
@@ -395,7 +425,7 @@ class iOSbackup(object):
         """
 
         if not self.manifestDB:
-            raise Exception("Object not yet innitialized or can't find decrypted files catalog (Manifest.db)")
+            raise Exception("Object not yet innitialized or can't find decrypted files catalog ({})".format(iOSbackup.catalog['manifestDB']))
 
         if not relativePath:
             relativePath=''
@@ -500,6 +530,26 @@ class iOSbackup(object):
 
 
 
+
+    def getDomains(self):
+        """Returns a list of all backup domains found in this backup.
+        """
+        if not self.manifestDB:
+            raise Exception("Object not yet innitialized or can't find decrypted files catalog ({})".format(iOSbackup.catalog['manifestDB']))
+
+        catalog = sqlite3.connect(self.manifestDB)
+        catalog.row_factory=sqlite3.Row
+
+        domains=catalog.cursor().execute(f"SELECT DISTINCT domain FROM Files").fetchall()
+
+        catalog.close()
+
+        return [i['domain'] for i in domains]
+
+
+
+
+
     def getFileManifestDBEntry(self, fileNameHash=None, relativePath=None):
         """Get the Manifest DB entry for a file either from its file name hash or relative file name.
         File name hash is more precise because its unique, while the relative file name may appear under multiple backup domains.
@@ -513,14 +563,14 @@ class iOSbackup(object):
 
         Returns
         -------
-        A dict with Manifest info about the file along with the file manifest.
+        A dict with catalog entry about the file along with its manifest.
 
         """
         if fileNameHash==None and relativePath==None:
             raise Exception(f"Either fileNameHash or relativePath must be provided")
 
         if not self.manifestDB:
-            raise Exception("Object not yet innitialized or can't find decrypted files catalog (Manifest.db)")
+            raise Exception("Object not yet innitialized or can't find decrypted files catalog ({})".format(iOSbackup.catalog['manifestDB']))
 
         catalog = sqlite3.connect(self.manifestDB)
         catalog.row_factory=sqlite3.Row
@@ -535,15 +585,22 @@ class iOSbackup(object):
         if backupFile:
             payload=dict(backupFile)
             payload['manifest']=biplist.readPlistFromString(payload['file'])
+            del payload['file']
         else:
-            raise(FileNotFoundError(f"Can't find file «{relativePath}» on this backup"))
+            if relativePath:
+                raise(FileNotFoundError(f"Can't find backup entry for relative path «{relativePath}» on catalog"))
+            else:
+                raise(FileNotFoundError(f"Can't find backup entry for «{fileNameHash}» on catalog"))
 
         return payload
 
 
-    def getFileInfo(fileNameHash, manifestData):
-        """Given a backup file hash along with its manifest data (as returned by getFileManifestDBEntry()), returns a
-        dict of file metadata and content of the file.
+
+
+    def getFileInfo(manifestData):
+        """Given manifest data (as returned by getFileManifestDBEntry()), returns a
+        dict of file metadata (size, time created, isFolder etc) and content of the file
+        including passed manifestData itself in completeManifest key.
         """
         if type(manifestData)==dict:
             # Assuming this is biplist-processed plist file already converted into a dict
@@ -571,6 +628,8 @@ class iOSbackup(object):
         }
 
 
+
+
     def getFileDecryptedData(self, fileNameHash, manifestData):
         """Given a backup file hash along with its manifest data (as returned by getFileManifestDBEntry()), returns a
         dict of file metadata and the decrypted content of the file. This is the memory-only version of getFileDecryptedCopy().
@@ -579,7 +638,7 @@ class iOSbackup(object):
         Those can easily reach 2GB or 3GB in size and burn your entire RAM.
         """
 
-        info=iOSbackup.getFileInfo(fileNameHash, manifestData)
+        info=iOSbackup.getFileInfo(manifestData)
 
         fileData=info['completeManifest']['$objects'][info['completeManifest']['$top']['root'].integer]
 
@@ -622,6 +681,7 @@ class iOSbackup(object):
         info['backupFile']=backupFile['fileID']
 
         return (info, dataDecrypted)
+
 
 
 
@@ -682,13 +742,16 @@ class iOSbackup(object):
 
 
 
-    def getLargeFileDecryptedCopy(self, relativePath, targetName=None, targetFolder=None, temporary=False):
+    def getLargeFileDecryptedCopy(self, relativePath=None, manifestData=None, targetName=None, targetFolder=None, temporary=False):
         """Returns a dict with filename of a decrypted copy of certain file along with some file information
+        Either relativePath or fileNameHash+manifestData must be provided.
 
         Parameters
         ----------
         relativePath : str
             Semi full path name of a backup file. Something like 'Library/CallHistoryDB/CallHistory.storedata'
+        fileNameHash : str
+            Hashed filename as can be seen under iOS backup folder.
         targetName : str, optional
             File name on targetFolder where to save decrypted data. Uses something like 'HomeDomain~Library--CallHistoryDB--CallHistory.storedata' if omitted.
         targetFolder : str, optional
@@ -701,18 +764,30 @@ class iOSbackup(object):
         A dict of metadata about the file.
         """
 
-        if not relativePath:
+        if relativePath:
+            backupFile=self.getFileManifestDBEntry(relativePath=relativePath)
+
+            fileNameHash=backupFile['fileID']
+            manifestData=backupFile['manifest']
+            domain=backupFile['domain']
+
+
+
+        if manifestData:
+            info=iOSbackup.getFileInfo(manifestData)
+            fileNameHash=manifestData['fileID']
+            domain=info['domain']
+        else:
             return None
 
-        backupFile=self.getFileManifestDBEntry(relativePath=relativePath)
-        info=iOSbackup.getFileInfo(backupFile['fileID'], backupFile['manifest'])
+
         fileData=info['completeManifest']['$objects'][info['completeManifest']['$top']['root'].integer]
 
 
         if targetName:
             fileName=targetName
         else:
-            fileName='{domain}~{modifiedPath}'.format(domain=backupFile['domain'],modifiedPath=relativePath.replace('/','--'))
+            fileName='{domain}~{modifiedPath}'.format(domain=domain,modifiedPath=relativePath.replace('/','--'))
 
         if temporary:
             targetFileName=tempfile.NamedTemporaryFile(suffix=f"---{fileName}", dir=targetFolder, delete=True)
@@ -791,10 +866,11 @@ class iOSbackup(object):
 
 
 
+
     def getManifestDB(self):
         """Returns full path name of a decrypted copy of Manifest.db. Used internally."""
 
-        with open(os.path.join(self.backupRoot,self.udid,'Manifest.db'), 'rb') as db:
+        with open(os.path.join(self.backupRoot,self.udid,iOSbackup.catalog['manifestDB']), 'rb') as db:
             encrypted_db = db.read()
 
         manifest_class = struct.unpack('<l', self.manifest['ManifestKey'][:4])[0]
@@ -806,21 +882,39 @@ class iOSbackup(object):
 
 #         print(len(decrypted_data))
 
-        file=tempfile.NamedTemporaryFile(suffix="--Manifest.db", delete=False)
+        file=tempfile.NamedTemporaryFile(suffix="--"+iOSbackup.catalog['manifestDB'], delete=False)
         self.manifestDB=file.name
         file.write(decrypted_data)
         file.close()
 
 
 
-    def loadKeys(self):
-        manifestFile = os.path.join(self.backupRoot,self.udid,'Manifest.plist')
+    def loadManifest(self):
+        """Load the very initial metadata files of an iOS backup"""
+        manifestFile = os.path.join(self.backupRoot, self.udid, iOSbackup.catalog['manifest'])
 
         self.date=iOSbackup.convertTime(os.path.getmtime(manifestFile), since2001=False)
 
         with open(manifestFile, 'rb') as infile:
             self.manifest = biplist.readPlist(infile)
 
+
+
+
+        infoFile = os.path.join(self.backupRoot, self.udid, iOSbackup.catalog['info'])
+        with open(infoFile, 'rb') as infile:
+            self.info = plistlib.load(infile)
+
+
+
+
+        statusFile = os.path.join(self.backupRoot, self.udid, iOSbackup.catalog['status'])
+        with open(statusFile, 'rb') as infile:
+            self.status = biplist.readPlist(infile)
+
+
+
+    def loadKeys(self):
         backupKeyBag=self.manifest['BackupKeyBag']
         currentClassKey = None
 
@@ -848,6 +942,7 @@ class iOSbackup(object):
 
 
 
+
     def deriveKeyFromPassword(self,cleanpassword=None):
         # Try to use fastpbkdf2.pbkdf2_hmac().
         # Fallback to Pythons default hashlib.pbkdf2_hmac() if not found.
@@ -870,6 +965,7 @@ class iOSbackup(object):
 
 
 
+
     def unlockKeys(self):
         for classkey in self.classKeys.values():
             if b"WPKY" not in classkey:
@@ -885,6 +981,7 @@ class iOSbackup(object):
 
 
 
+
     def unwrapKeyForClass(self, protection_class, persistent_key):
         if len(persistent_key) != 0x28:
             raise Exception("Invalid key length")
@@ -895,13 +992,16 @@ class iOSbackup(object):
 
 
 
+
     def unpack64bit(s):
         return struct.unpack(">Q",s)[0]
 
 
 
+
     def pack64bit(s):
         return struct.pack(">Q",s)
+
 
 
 
@@ -946,6 +1046,7 @@ class iOSbackup(object):
 
 
 
+
     def AESdecryptCBC(data, key, iv=b'\x00'*16, padding=False):
         todec = data
 
@@ -959,6 +1060,7 @@ class iOSbackup(object):
             return iOSbackup.removePadding(16, dec)
 
         return dec
+
 
 
 
