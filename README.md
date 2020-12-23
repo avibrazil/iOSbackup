@@ -154,6 +154,10 @@ With Pandas, display only list of files in `HomeDomain` group:
 ```
 
 ### Get a decrypted copy of the call history SQLite database:
+The `getFileDecryptedCopy()` method creates a decrypted copy of requested file on `targetFolder/targetName`.
+If `targetFolder` and `targetName` aren't given, a temporary file will be created.
+The name of decrypted file (temporary or not) can be found in the `decryptedFilePath` item of returned dict, as seen below.
+
 ```python
 >>> file=b.getFileDecryptedCopy(relativePath="Library/CallHistoryDB/CallHistory.storedata")
 >>> file
@@ -166,7 +170,7 @@ With Pandas, display only list of files in `HomeDomain` group:
 
 Read decrypted copy of call history database:
 ```python
->>> calls = sqlite3.connect(file.decryptedFilePath)
+>>> calls = sqlite3.connect(file['decryptedFilePath'])
 >>> calls.row_factory=sqlite3.Row
 >>> calllog = calls.cursor().execute(f"SELECT * FROM ZCALLRECORD ORDER BY ZDATE DESC").fetchall()
 ```
@@ -183,7 +187,7 @@ This example will exclude videos from restoration.
 )
 ```
 
-### Restore an entire backup domain
+### Restore an entire domain
 Here we restore all files of `WirelessDomain` in a hierarchy starting at local directory:
 ```python
 >>> b.getFolderDecryptedCopy(
