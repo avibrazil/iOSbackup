@@ -8,6 +8,8 @@ import pprint
 import tempfile
 import sqlite3
 import time
+import mmap
+
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -539,9 +541,9 @@ class iOSbackup(object):
         return payload
 
 
-    def getFileDecryptedData(self, fileNameHash, manifestData):
+    def getFileInfo(fileNameHash, manifestData):
         """Given a backup file hash along with its manifest data (as returned by getFileManifestDBEntry()), returns a
-        dict of file metadata and the decrypted content of the file. This is the memory-only version of getFileDecryptedCopy().
+        dict of file metadata and content of the file.
         """
         if type(manifestData)==dict:
             # Assuming this is biplist-processed plist file already converted into a dict
@@ -552,25 +554,11 @@ class iOSbackup(object):
 
         fileData=manifest['$objects'][manifest['$top']['root'].integer]
 
+        folder=True
         if 'EncryptionKey' in fileData:
             folder=False
 
-            encryptionKey=manifest['$objects'][fileData['EncryptionKey'].integer]['NS.data'][4:]
-
-
-            # {BACKUP_ROOT}/{UDID}/ae/ae2c3d4e5f6...
-            with open(os.path.join(self.backupRoot, self.udid, fileNameHash[:2], fileNameHash), 'rb') as infile:
-                dataEncrypted = infile.read()
-
-            key = self.unwrapKeyForClass(fileData['ProtectionClass'], encryptionKey)
-
-            # See https://github.com/avibrazil/iOSbackup/issues/1
-            dataDecrypted = iOSbackup.AESdecryptCBC(dataEncrypted, key, padding=True)
-        else:
-            dataDecrypted=None
-            folder=True
-
-        info={
+        return {
             "size": fileData['Size'],
             "created": iOSbackup.convertTime(fileData['Birth'], since2001=False),
             "lastModified": iOSbackup.convertTime(fileData['LastModified'], since2001=False),
@@ -582,12 +570,44 @@ class iOSbackup(object):
             "completeManifest": manifest
         }
 
+
+    def getFileDecryptedData(self, fileNameHash, manifestData):
+        """Given a backup file hash along with its manifest data (as returned by getFileManifestDBEntry()), returns a
+        dict of file metadata and the decrypted content of the file. This is the memory-only version of getFileDecryptedCopy().
+
+        Do not use this method with large files as 4K videos.
+        Those can easily reach 2GB or 3GB in size and burn your entire RAM.
+        """
+
+        info=iOSbackup.getFileInfo(fileNameHash, manifestData)
+
+        fileData=info['completeManifest']['$objects'][info['completeManifest']['$top']['root'].integer]
+
+        dataDecrypted=None
+        if 'EncryptionKey' in fileData:
+            encryptionKey=info['completeManifest']['$objects'][fileData['EncryptionKey'].integer]['NS.data'][4:]
+
+
+            # {BACKUP_ROOT}/{UDID}/ae/ae2c3d4e5f6...
+            with open(os.path.join(self.backupRoot, self.udid, fileNameHash[:2], fileNameHash), 'rb') as infile:
+                dataEncrypted = infile.read()
+
+            key = self.unwrapKeyForClass(fileData['ProtectionClass'], encryptionKey)
+
+            # See https://github.com/avibrazil/iOSbackup/issues/1
+            dataDecrypted = iOSbackup.AESdecryptCBC(dataEncrypted, key, padding=True)
+
         return (info, dataDecrypted)
+
+
 
 
     def getRelativePathDecryptedData(self, relativePath):
         """Given a domain-relative file path as `Media/PhotoData/AlbumsMetadata/abc123.jpg`,
         find its manifest info in backup metadata and return file contents along with metadata.
+
+        Do not use this method with large files as 4K videos.
+        Those can easily reach 2GB or 3GB in size and burn your entire RAM.
         """
         if not relativePath:
             return None
@@ -658,6 +678,91 @@ class iOSbackup(object):
         info['decryptedFilePath']=targetFileName
 
         return info
+
+
+
+
+    def getLargeFileDecryptedCopy(self, relativePath, targetName=None, targetFolder=None, temporary=False):
+        """Returns a dict with filename of a decrypted copy of certain file along with some file information
+
+        Parameters
+        ----------
+        relativePath : str
+            Semi full path name of a backup file. Something like 'Library/CallHistoryDB/CallHistory.storedata'
+        targetName : str, optional
+            File name on targetFolder where to save decrypted data. Uses something like 'HomeDomain~Library--CallHistoryDB--CallHistory.storedata' if omitted.
+        targetFolder : str, optional
+            Folder where to store decrypted file, saves on current folder if omitted.
+        temporary : str, optional
+            Creates a temporary file (using tempfile module) in a temporary folder. Use targetFolder if omitted.
+
+        Returns
+        -------
+        A dict of metadata about the file.
+        """
+
+        if not relativePath:
+            return None
+
+        backupFile=self.getFileManifestDBEntry(relativePath=relativePath)
+        info=iOSbackup.getFileInfo(backupFile['fileID'], backupFile['manifest'])
+        fileData=info['completeManifest']['$objects'][info['completeManifest']['$top']['root'].integer]
+
+
+        if targetName:
+            fileName=targetName
+        else:
+            fileName='{domain}~{modifiedPath}'.format(domain=backupFile['domain'],modifiedPath=relativePath.replace('/','--'))
+
+        if temporary:
+            targetFileName=tempfile.NamedTemporaryFile(suffix=f"---{fileName}", dir=targetFolder, delete=True)
+            targetFileName=targetFileName.name
+        else:
+            if targetFolder:
+                targetFileName=os.path.join(targetFolder,fileName)
+            else:
+                targetFileName=fileName
+
+
+        if 'EncryptionKey' in fileData:
+            encryptionKey=info['completeManifest']['$objects'][fileData['EncryptionKey'].integer]['NS.data'][4:]
+            key = self.unwrapKeyForClass(fileData['ProtectionClass'], encryptionKey)
+
+            chunkSize=16*1000000 # 16MB chunk size
+
+            decryptor = AES.new(key, AES.MODE_CBC, b'\x00'*16)
+
+
+            # {BACKUP_ROOT}/{UDID}/ae/ae2c3d4e5f6...
+            with open(os.path.join(self.backupRoot, self.udid, backupFile['fileID'][:2], backupFile['fileID']), 'rb') as inFile:
+                mappedInFile = mmap.mmap(inFile.fileno(), length=0, prot=mmap.PROT_READ)
+
+                with open(targetFileName, 'wb') as outFile:
+
+                    chunkIndex=0
+                    while True:
+                        chunk = mappedInFile[chunkIndex*chunkSize:(chunkIndex+1)*chunkSize]
+
+                        if len(chunk) == 0:
+                            break
+
+                        outFile.write(decryptor.decrypt(chunk))
+                        chunkIndex+=1
+
+                    outFile.truncate(info['size'])
+
+
+
+        # Set file modification date and localtime time as per device's
+        mtime=time.mktime(info['lastModified'].astimezone(tz=None).timetuple())
+        os.utime(targetFileName,(mtime, mtime))
+
+        # Add more information to the returned info dict
+        info['decryptedFilePath']=targetFileName
+
+        return info
+
+
 
 
     def convertTime(timeToConvert, since2001=True):
