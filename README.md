@@ -140,14 +140,23 @@ b.manifestDB # decrypted copy of Manifest.db SQLite database
 ```
 
 ### Get a list of backed-up files:
+Info available in the `Manifest.db` which relates backup file hash to semi-full path of file into the device, plus file backup domain, plus some file metadata.
 ```python
 >>> b.getBackupFilesList()
 [{'name': '',
   'backupFile': 'abfbc8747bfbb373e2b08ce67b1255ffda4e1b91',
-  'domain': 'AppDomain-4GU63N96WE.com.p5sys.jumpdesktop'},
+  'domain': 'AppDomain-4GU63N96WE.com.p5sys.jumpdesktop',
+  'relativePath': '',
+  'flags': 2,
+  'file': b'bplist00\xd4...'
+  },
  {'name': 'Documents',
   'backupFile': 'ec0c1b379560bb5ccc81ee783538fd51cfd97461',
-  'domain': 'AppDomain-4GU63N96WE.com.p5sys.jumpdesktop'},
+  'domain': 'AppDomain-4GU63N96WE.com.p5sys.jumpdesktop',
+  'relativePath': 'Documents',
+  'flags': 2,
+  'file': b'bplist00\xd4...'
+  },
  {'name': 'Documents/Servers',
   'backupFile': 'a735380eade71b48f0fe27d38a283aacd8ed8372',
   'domain': 'AppDomain-4GU63N96WE.com.p5sys.jumpdesktop'},
@@ -165,6 +174,8 @@ b.manifestDB # decrypted copy of Manifest.db SQLite database
 `name` is the original semi-complete path of file name in the device.
 
 `domain` is the file group this file is member, see bellow list of domains.
+
+`file` is binary plist content with some file metadata.
 
 Or put it directly into a Pandas DataFrame for easier manipulation and searching:
 ```python
@@ -288,7 +299,7 @@ Domain | Contains
 **CameraRollDomain** | Photos
 **DatabaseDomain** |
 **HealthDomain** | Health app databases
-**HomeDomain** | Many interesting databases, such as call history
+**HomeDomain** | Many interesting databases, such as contacts and call history
 **HomeKitDomain** |
 **InstallDomain** |
 **KeyboardDomain** |
