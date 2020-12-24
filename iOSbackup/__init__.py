@@ -20,7 +20,7 @@ except:
     from Crypto.Cipher import AES # https://www.dlitz.net/software/pycrypto/
 
 
-__version__ = '0.9.904'
+__version__ = '0.9.910'
 
 
 class iOSbackup(object):
