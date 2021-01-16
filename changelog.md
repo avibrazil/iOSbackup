@@ -1,5 +1,11 @@
 # Changelog for iOSbackup
 
+## v0.9.910...v0.9.904
+* getFileDecryptedCopy() now can handle huge files
+* more code adaptation to acomodate improved getFileDecryptedCopy()
+* taking care of other 2 catalog files: Info.plist and Status.plist
+* improvements to examples as docs
+
 ## v0.9.904...v0.9.903
 * New method getRelativePathDecryptedData
 * doc section about basic device and backup info

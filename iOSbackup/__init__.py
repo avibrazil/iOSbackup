@@ -10,6 +10,7 @@ import tempfile
 import sqlite3
 import time
 import mmap
+import logging
 
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,7 +21,7 @@ except:
     from Crypto.Cipher import AES # https://www.dlitz.net/software/pycrypto/
 
 
-__version__ = '0.9.910'
+__version__ = '0.9.911'
 
 
 class iOSbackup(object):
@@ -127,8 +128,16 @@ class iOSbackup(object):
     CLASSKEY_TAGS = [b"CLAS", b"WRAP", b"WPKY", b"KTYP", b"PBKY"]  #UUID
 
     def __del__(self):
-        os.remove(self.manifestDB)
+        self.close()
 
+
+
+    def close(self):
+        try:
+            os.remove(self.manifestDB)
+        except FileNotFoundError:
+            # Its OK if manifest temporary file is not there anymore
+            pass
 
 
 
@@ -285,8 +294,12 @@ class iOSbackup(object):
         if udid and root:
             manifestFile = os.path.join(root, udid, iOSbackup.catalog['manifest'])
             info={}
-            with open(manifestFile, 'rb') as infile:
-                manifest = biplist.readPlist(infile)
+            try:
+                with open(manifestFile, 'rb') as infile:
+                    manifest = biplist.readPlist(infile)
+            except FileNotFoundError:
+                logging.warning(f"{udid} under {root} doesn't seem to have a manifest file.")
+                return None
             info={
                 "udid": udid,
                 "name": manifest['Lockdown']['DeviceName'],
