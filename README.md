@@ -6,6 +6,17 @@ You will need your backup password to decrypt the backup files, this is the pass
 
 You should always prefer encrypted backups because they are more secure and include more files from your device. Non-encrypted backups do not backup files as Health app database and other preciosities.
 
+## Donation
+
+This software is essential for advanced device forensic activities or to anyone in need to dominate and extract full data from an iOS device.
+
+Please consider donation of any amount in Bitcoin or Ethereum:
+
+* Bitcoin donation: bc1qerzyzwdnsmpfdkl3lcjgm3rhvvy7svy0p89ndj
+* Ethereum donation: 0x098dADeDDf14382F19d4F5d989fD8734376B0224
+
+Thank you in advance
+
 ## Installation
 
 ```shell

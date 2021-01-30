@@ -1,5 +1,10 @@
 # Changelog for iOSbackup
 
+## v0.9.912...v0.9.910
+* included close() method to clean open databases
+* started to use the logging module
+* improved getFileDecryptedCopy() to handle huge files
+
 ## v0.9.910...v0.9.904
 * getFileDecryptedCopy() now can handle huge files
 * more code adaptation to acomodate improved getFileDecryptedCopy()
