@@ -23,6 +23,7 @@ except:
 
 __version__ = '0.9.911'
 
+module_logger = logging.getLogger(__name__)
 
 class iOSbackup(object):
     """
