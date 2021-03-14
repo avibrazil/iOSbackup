@@ -135,7 +135,8 @@ class iOSbackup(object):
 
     def close(self):
         try:
-            os.remove(self.manifestDB)
+            if self.manifestDB is not None:
+                os.remove(self.manifestDB)
         except FileNotFoundError:
             # Its OK if manifest temporary file is not there anymore
             pass
