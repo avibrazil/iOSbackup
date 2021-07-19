@@ -965,8 +965,11 @@ class iOSbackup(object):
 
             # {BACKUP_ROOT}/{UDID}/ae/ae2c3d4e5f6...
             with open(os.path.join(self.backupRoot, self.udid, fileNameHash[:2], fileNameHash), 'rb') as inFile:
-                mappedInFile = mmap.mmap(inFile.fileno(), length=0, prot=mmap.PROT_READ)
-
+                if os.name == 'nt':
+                    mappedInFile = mmap.mmap(inFile.fileno(), length=0, access=mmap.ACCESS_READ)
+                else:
+                    mappedInFile = mmap.mmap(inFile.fileno(), length=0, prot=mmap.PROT_READ)
+                    
                 with open(targetFileName, 'wb') as outFile:
 
                     chunkIndex=0
