@@ -1,5 +1,15 @@
 # Changelog for iOSbackup
 
+## v0.9.913...v0.9.912
+* improved exception message when password of decryption key is wrong
+* Merge pull request #13 from Unbrick/master
+* Merge pull request #10 from hcleves/ios-older-than-10.2
+* Merge pull request #7 from lps-rocks/patch-1
+* Updated mmap to run on Windows machines
+* Add files via upload
+* Fix uncaught exception
+* crypto donation addresses
+
 ## v0.9.912...v0.9.910
 * included close() method to clean open databases
 * started to use the logging module
