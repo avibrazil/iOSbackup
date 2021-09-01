@@ -21,7 +21,7 @@ except:
     from Crypto.Cipher import AES # https://www.dlitz.net/software/pycrypto/
 
 
-__version__ = '0.9.912'
+__version__ = '0.9.913'
 
 module_logger = logging.getLogger(__name__)
 
@@ -1145,8 +1145,10 @@ class iOSbackup(object):
 
             if classkey[b"WRAP"] & self.WRAP_PASSCODE:
                 k = iOSbackup.AESUnwrap(self.decryptionKey,classkey[b"WPKY"])
+                
                 if not k:
-                    return False
+                    raise Exception('Failed decrypting backup. Try to start over with a clear text decrypting password on parameter "cleartextpassword".')
+                
                 classkey[b"KEY"] = k
 
         return True
@@ -1158,8 +1160,8 @@ class iOSbackup(object):
         if len(persistent_key) != 0x28:
             raise Exception("Invalid key length")
 
-#         print(f"class: {protection_class}, key: {persistent_key}")
         ck = self.classKeys[protection_class][b"KEY"]
+        
         return iOSbackup.AESUnwrap(ck, persistent_key)
 
 
