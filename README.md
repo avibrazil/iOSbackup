@@ -381,9 +381,9 @@ dafec408e48be2700704dd3e763014c39f6de6b3 | WirelessDomain | Library/Preferences/
 7e5f642f6da5e2345c0893bdf944da9c53902756 | WirelessDomain | Library/Preferences/com.apple.commcenter.callservices.plist
 bfecaa9c467e3acb085a5b312bd27bdd5cd7579a | WirelessDomain | Library/Preferences/com.apple.commcenter.plist | Cellular network informations and configurations, including all ever inserted SIM and eSIM cards, their phone numbers and nicknames as configured under Settings➔Celular. Data here is related to `Library/Databases/CellularUsage.db` 
 160600e9c2e408c69e4193d325813a2a885bce2a | WirelessDomain | Library/Preferences/com.apple.ipTelephony.plist
+12b144c0bd44f2b3dffd9186d3f9c05b917cee25 | CameraRollDomain | Media/PhotoData/Photos.sqlite | Photo library data, albums, tagged faces, moments, places, geolocations, date and times, formats etc.
 . | CameraRollDomain | Media/DCIM/*APPLE | Original master photos/videos taken by your camera or imported through AirDrop etc
 . | CameraRollDomain | Media/PhotoData/Mutations/DCIM/*APPLE | Edited version of photos/videos
-
 . | HomeDomain | Library/Mobile Documents/iCloud~... | Apps documents on iCloud
 . | HomeDomain | Library/Mobile Documents/com\~apple\~CloudDocs/... | Documents folder on iCloud
 5a4935c78a5255723f707230a451d79c540d2741 | HomeDomain | Library/CallHistoryDB/CallHistory.storedata | Call History database with only the last 600 calls
@@ -395,6 +395,5 @@ cd6702cea29fe89cf280a76794405adb17f9a0ee | HomeDomain | Library/AddressBook/Addr
 . | MediaDomain | Library/SMS/Attachments/*
 . | MediaDomain | Library/SMS/StickerCache/*
 . | . | Library/Caches/locationd/consolidated.db | Apparently list of known iBeacons
-12b144c0bd44f2b3dffd9186d3f9c05b917cee25 | CameraRollDomain | Media/PhotoData/Photos.sqlite | Photo library data, albums, tagged faces, moments, places, geolocations, date and times, formats etc.
 
 
