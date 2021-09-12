@@ -1,10 +1,8 @@
-import biplist # binary only
-import plistlib # plain text only
-from importlib import import_module
 import struct
 import os
 import sys
 import textwrap
+from importlib import import_module
 import pprint
 import tempfile
 import sqlite3
@@ -15,13 +13,17 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+# import biplist # binary only
+import plistlib # plain text only
+import NSKeyedUnArchiver
+
 try:
     from Cryptodome.Cipher import AES
 except:
     from Crypto.Cipher import AES # https://www.dlitz.net/software/pycrypto/
 
 
-__version__ = '0.9.913'
+__version__ = '0.9.92'
 
 module_logger = logging.getLogger(__name__)
 
@@ -298,7 +300,8 @@ class iOSbackup(object):
             info={}
             try:
                 with open(manifestFile, 'rb') as infile:
-                    manifest = biplist.readPlist(infile)
+#                     manifest = biplist.readPlist(infile)
+                    manifest = plistlib.load(infile)
             except FileNotFoundError:
                 logging.warning(f"{udid} under {root} doesn't seem to have a manifest file.")
                 return None
@@ -653,7 +656,8 @@ class iOSbackup(object):
         fileList=[]
         for payload in backupFiles:
             payload=dict(payload)
-            payload['manifest']=biplist.readPlistFromString(payload['file'])
+#             payload['manifest']=biplist.readPlistFromString(payload['file'])
+            payload['manifest']=plistlib.loads(payload['file'])
             del payload['file']
 
             # Compute target file with path
@@ -738,7 +742,9 @@ class iOSbackup(object):
 
         if backupFile:
             payload=dict(backupFile)
-            payload['manifest']=biplist.readPlistFromString(payload['file'])
+#             payload['manifest']=biplist.readPlistFromString(payload['file'])
+#             payload['manifest']=plistlib.loads(payload['file'])
+            payload['manifest']=NSKeyedUnArchiver.unserializeNSKeyedArchiver(payload['file'])
             del payload['file']
         else:
             if relativePath:
@@ -761,9 +767,13 @@ class iOSbackup(object):
             manifest=manifestData
         elif type(manifestData)==bytes:
             # Interpret data stream and convert into a dict
-            manifest = biplist.readPlistFromString(manifestData)
+#             manifest = biplist.readPlistFromString(manifestData)
+#             manifest = plistlib.loads(manifestData)
+            manifest = NSKeyedUnArchiver.unserializeNSKeyedArchiver(manifestData)
 
-        fileData=manifest['$objects'][manifest['$top']['root'].integer]
+
+
+        fileData=manifest
 
         folder=True
         if 'EncryptionKey' in fileData:
@@ -794,11 +804,13 @@ class iOSbackup(object):
 
         info=iOSbackup.getFileInfo(manifestData)
 
-        fileData=info['completeManifest']['$objects'][info['completeManifest']['$top']['root'].integer]
+#         fileData=info['completeManifest']['$objects'][info['completeManifest']['$top']['root'].integer]
+        fileData=info['completeManifest']
 
         dataDecrypted=None
         if 'EncryptionKey' in fileData:
-            encryptionKey=info['completeManifest']['$objects'][fileData['EncryptionKey'].integer]['NS.data'][4:]
+#             encryptionKey=info['completeManifest']['$objects'][fileData['EncryptionKey'].integer]['NS.data'][4:]
+            encryptionKey=info['completeManifest']['EncryptionKey'][4:]
 
 
             # {BACKUP_ROOT}/{UDID}/ae/ae2c3d4e5f6...
@@ -937,7 +949,8 @@ class iOSbackup(object):
             return None
 
 
-        fileData=info['completeManifest']['$objects'][info['completeManifest']['$top']['root'].integer]
+#         fileData=info['completeManifest']['$objects'][info['completeManifest']['$top']['root'].integer]
+        fileData=info['completeManifest']
 
 
         if targetName:
@@ -956,7 +969,7 @@ class iOSbackup(object):
 
 
         if 'EncryptionKey' in fileData:
-            encryptionKey=info['completeManifest']['$objects'][fileData['EncryptionKey'].integer]['NS.data'][4:]
+            encryptionKey=fileData['EncryptionKey'][4:]
             key = self.unwrapKeyForClass(fileData['ProtectionClass'], encryptionKey)
 
             chunkSize=16*1000000 # 16MB chunk size
@@ -970,7 +983,7 @@ class iOSbackup(object):
                     mappedInFile = mmap.mmap(inFile.fileno(), length=0, access=mmap.ACCESS_READ)
                 else:
                     mappedInFile = mmap.mmap(inFile.fileno(), length=0, prot=mmap.PROT_READ)
-                    
+
                 with open(targetFileName, 'wb') as outFile:
 
                     chunkIndex=0
@@ -1039,7 +1052,7 @@ class iOSbackup(object):
         # Also, the ManifestKey is not presented in the Plist, so all references to 'ManifestKey' would result in KeyError
         if isOlderThaniOS10dot2(self.manifest['Lockdown']['ProductVersion']):
             decrypted_data = encrypted_db
-        else:        
+        else:
             manifest_class = struct.unpack('<l', self.manifest['ManifestKey'][:4])[0]
             manifest_key   = self.manifest['ManifestKey'][4:]
 
@@ -1064,7 +1077,8 @@ class iOSbackup(object):
         self.date=iOSbackup.convertTime(os.path.getmtime(manifestFile), since2001=False)
 
         with open(manifestFile, 'rb') as infile:
-            self.manifest = biplist.readPlist(infile)
+#             self.manifest = biplist.readPlist(infile)
+            self.manifest = plistlib.load(infile)
 
 
 
@@ -1078,7 +1092,8 @@ class iOSbackup(object):
 
         statusFile = os.path.join(self.backupRoot, self.udid, iOSbackup.catalog['status'])
         with open(statusFile, 'rb') as infile:
-            self.status = biplist.readPlist(infile)
+#             self.status = biplist.readPlist(infile)
+            self.status = plistlib.load(infile)
 
 
 
@@ -1145,10 +1160,10 @@ class iOSbackup(object):
 
             if classkey[b"WRAP"] & self.WRAP_PASSCODE:
                 k = iOSbackup.AESUnwrap(self.decryptionKey,classkey[b"WPKY"])
-                
+
                 if not k:
                     raise Exception('Failed decrypting backup. Try to start over with a clear text decrypting password on parameter "cleartextpassword".')
-                
+
                 classkey[b"KEY"] = k
 
         return True
@@ -1161,7 +1176,7 @@ class iOSbackup(object):
             raise Exception("Invalid key length")
 
         ck = self.classKeys[protection_class][b"KEY"]
-        
+
         return iOSbackup.AESUnwrap(ck, persistent_key)
 
 
@@ -1251,14 +1266,14 @@ class iOSbackup(object):
 
 
 def isOlderThaniOS10dot2(version):
-    """Return boolean whether the version is older than ios 10.2 
-    
+    """Return boolean whether the version is older than ios 10.2
+
     Parameters
     ----------
     version : str,
         Version we want to compare. Assumes version is separated using point.
     """
-    
+
     versions = version.split('.')
     if int(versions[0])<10:
         return True
