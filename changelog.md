@@ -7,6 +7,7 @@
 * plist handling with NSKeyedUnArchiver
 * more items in the list of interesting files on README.md
 * updated changelog
+
 ## v0.9.913...v0.9.912
 * improved exception message when password of decryption key is wrong
 * Merge pull request #13 from Unbrick/master
