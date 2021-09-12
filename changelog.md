@@ -1,5 +1,12 @@
 # Changelog for iOSbackup
 
+## v0.9.921...v0.9.913
+* version bump
+* typos in build system
+* isOlderThaniOS10dot2() converted to a class static method
+* plist handling with NSKeyedUnArchiver
+* more items in the list of interesting files on README.md
+* updated changelog
 ## v0.9.913...v0.9.912
 * improved exception message when password of decryption key is wrong
 * Merge pull request #13 from Unbrick/master
