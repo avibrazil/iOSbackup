@@ -23,7 +23,7 @@ except:
     from Crypto.Cipher import AES # https://www.dlitz.net/software/pycrypto/
 
 
-__version__ = '0.9.92'
+__version__ = '0.9.921'
 
 module_logger = logging.getLogger(__name__)
 
