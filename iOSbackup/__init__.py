@@ -228,7 +228,7 @@ class iOSbackup(object):
             classKeys=pprint.pformat(self.classKeys, indent=4),
             IsEncrypted=self.manifest['IsEncrypted'],
             PasscodeSet=self.manifest['WasPasscodeSet'],
-            ManifestKey='Not applicable' if isOlderThaniOS10dot2(self.manifest['Lockdown']['ProductVersion']) else self.manifest['ManifestKey'].hex(),
+            ManifestKey='Not applicable' if iOSbackup.isOlderThaniOS10dot2(self.manifest['Lockdown']['ProductVersion']) else self.manifest['ManifestKey'].hex(),
             Applications=pprint.pformat(self.manifest['Applications'], indent=4),
             manifestDB=self.manifestDB,
             name=self.manifest['Lockdown']['DeviceName'],
@@ -1050,7 +1050,7 @@ class iOSbackup(object):
 
         # Before iOS 10.2 the manifest database was not encrypted in the backups. So, there is no need for decryption.
         # Also, the ManifestKey is not presented in the Plist, so all references to 'ManifestKey' would result in KeyError
-        if isOlderThaniOS10dot2(self.manifest['Lockdown']['ProductVersion']):
+        if iOSbackup.isOlderThaniOS10dot2(self.manifest['Lockdown']['ProductVersion']):
             decrypted_data = encrypted_db
         else:
             manifest_class = struct.unpack('<l', self.manifest['ManifestKey'][:4])[0]
@@ -1137,7 +1137,7 @@ class iOSbackup(object):
             hlib = import_module('hashlib')
 
         # if the ios is older that 10.2, the stage with the DPSL and DPIC are not used in the key derivation
-        if isOlderThaniOS10dot2(self.manifest['Lockdown']['ProductVersion']):
+        if iOSbackup.isOlderThaniOS10dot2(self.manifest['Lockdown']['ProductVersion']):
             temp = cleanpassword
         else:
             temp = hlib.pbkdf2_hmac('sha256', cleanpassword,
@@ -1265,24 +1265,24 @@ class iOSbackup(object):
 
 
 
-def isOlderThaniOS10dot2(version):
-    """Return boolean whether the version is older than ios 10.2
+    def isOlderThaniOS10dot2(version):
+        """Return boolean whether the version is older than iOS 10.2
 
-    Parameters
-    ----------
-    version : str,
-        Version we want to compare. Assumes version is separated using point.
-    """
+        Parameters
+        ----------
+        version : str,
+            Version we want to compare. Assumes version is separated using point.
+        """
 
-    versions = version.split('.')
-    if int(versions[0])<10:
-        return True
-    if int(versions[0])>10:
-        return False
-    if int(versions[0])==10:
-        if len(versions)==1: #str is ios 10 only
+        versions = version.split('.')
+        if int(versions[0])<10:
             return True
-        if int(versions[1])<2:
-            return True
-        else:
+        if int(versions[0])>10:
             return False
+        if int(versions[0])==10:
+            if len(versions)==1: #str is ios 10 only
+                return True
+            if int(versions[1])<2:
+                return True
+            else:
+                return False
