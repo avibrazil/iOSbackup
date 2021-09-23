@@ -1,8 +1,11 @@
 import setuptools
 from iOSbackup import __version__
 
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+try:
+    with open("README.md", "r") as fh:
+        long_description = fh.read()
+except Exception:
+    long_description = ""
 
 setuptools.setup(
     name="iOSbackup",
