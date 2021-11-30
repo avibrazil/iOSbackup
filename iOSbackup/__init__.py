@@ -270,7 +270,7 @@ class iOSbackup(object):
             Full path of folder that contains device backups. Uses platformFoldersHint if omitted.
         """
 
-        if path:
+        if path is not None:
             self.backupRoot=os.path.expanduser(os.path.expandvars(path))
         else:
             self.backupRoot=iOSbackup.getHintedBackupRoot()
