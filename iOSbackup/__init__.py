@@ -137,7 +137,7 @@ class iOSbackup(object):
 
     def close(self):
         try:
-            if self.manifestDB is not None:
+            if self.manifestDB is not None and self.decryptionKey:
                 os.remove(self.manifestDB)
         except FileNotFoundError:
             # Its OK if manifest temporary file is not there anymore
@@ -772,12 +772,16 @@ class iOSbackup(object):
             manifest = NSKeyedUnArchiver.unserializeNSKeyedArchiver(manifestData)
 
 
+        if "$version" in manifest:
+            if manifest["$version"] == 100000:
+                fileData = manifest["$objects"][1]
+        else:
+            fileData=manifest
 
-        fileData=manifest
 
-        folder=True
-        if 'EncryptionKey' in fileData:
-            folder=False
+        # folder=True
+        # if 'EncryptionKey' in fileData:
+        #     folder=False
 
         return {
             "size": fileData['Size'],
@@ -785,7 +789,7 @@ class iOSbackup(object):
             "lastModified": iOSbackup.convertTime(fileData['LastModified'], since2001=False),
             "lastStatusChange": iOSbackup.convertTime(fileData['LastStatusChange'], since2001=False),
             "mode": fileData['Mode'],
-            "isFolder": folder,
+            "isFolder": True if fileData['Size'] == 0 and 'EncryptionKey' not in fileData else False,
             "userID": fileData['UserID'],
             "inode": fileData['InodeNumber'],
             "completeManifest": manifest
@@ -940,7 +944,7 @@ class iOSbackup(object):
 
 
         if manifestEntry:
-#             print(manifestEntry)
+            # print(manifestEntry)
             info=iOSbackup.getFileInfo(manifestEntry['manifest'])
             fileNameHash=manifestEntry['fileID']
             domain=manifestEntry['domain']
@@ -999,7 +1003,29 @@ class iOSbackup(object):
                     outFile.truncate(info['size'])
         elif info['isFolder']:
             Path(targetFileName).mkdir(parents=True, exist_ok=True)
+        else:
+            # assume protectin class 0
+            chunkSize=16*1000000 # 16MB chunk size
+            # {BACKUP_ROOT}/{UDID}/ae/ae2c3d4e5f6...
+            with open(os.path.join(self.backupRoot, self.udid, fileNameHash[:2], fileNameHash), 'rb') as inFile:
+                if os.name == 'nt':
+                    mappedInFile = mmap.mmap(inFile.fileno(), length=0, access=mmap.ACCESS_READ)
+                else:
+                    mappedInFile = mmap.mmap(inFile.fileno(), length=0, prot=mmap.PROT_READ)
 
+                with open(targetFileName, 'wb') as outFile:
+
+                    chunkIndex=0
+                    while True:
+                        chunk = mappedInFile[chunkIndex*chunkSize:(chunkIndex+1)*chunkSize]
+
+                        if len(chunk) == 0:
+                            break
+
+                        outFile.write(chunk)
+                        chunkIndex+=1
+
+                    outFile.truncate(info['size'])
 
 
 
@@ -1044,6 +1070,9 @@ class iOSbackup(object):
 
     def getManifestDB(self):
         """Returns full path name of a decrypted copy of Manifest.db. Used internally."""
+        if not self.decryptionKey:
+            self.manifestDB = os.path.join(self.backupRoot,self.udid,iOSbackup.catalog['manifestDB'])
+            return
 
         with open(os.path.join(self.backupRoot,self.udid,iOSbackup.catalog['manifestDB']), 'rb') as db:
             encrypted_db = db.read()
@@ -1154,6 +1183,8 @@ class iOSbackup(object):
 
 
     def unlockKeys(self):
+        if not self.decryptionKey:
+            return True
         for classkey in self.classKeys.values():
             if b"WPKY" not in classkey:
                 continue
