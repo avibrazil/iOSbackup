@@ -1,5 +1,9 @@
 # Changelog for iOSbackup
 
+## v0.9.923...v0.9.922
+* feat(unencrypted): initial support for unencrypted iOS backups
+* Merge pull request #21 from ahsueh1996/master
+
 ## v0.9.922...0.9.921
 * fix(getFolderDecryptedCopy): unserializeNSKeyedArchiver for manifest file
 * Merge pull request #18 from doronz88/master
