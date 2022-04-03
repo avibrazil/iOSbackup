@@ -23,7 +23,7 @@ except:
     from Crypto.Cipher import AES # https://www.dlitz.net/software/pycrypto/
 
 
-__version__ = '0.9.922'
+__version__ = '0.9.923'
 
 module_logger = logging.getLogger(__name__)
 
@@ -968,6 +968,7 @@ class iOSbackup(object):
 
 
         if 'EncryptionKey' in fileData:
+            # Encrypted file
             encryptionKey=fileData['EncryptionKey'][4:]
             key = self.unwrapKeyForClass(fileData['ProtectionClass'], encryptionKey)
 
@@ -997,31 +998,18 @@ class iOSbackup(object):
 
                     outFile.truncate(info['size'])
         elif info['isFolder']:
+            # Plain folder
             Path(targetFileName).mkdir(parents=True, exist_ok=True)
         else:
-            # assume protectin class 0
-            chunkSize=16*1000000 # 16MB chunk size
-            # {BACKUP_ROOT}/{UDID}/ae/ae2c3d4e5f6...
-            with open(os.path.join(self.backupRoot, self.udid, fileNameHash[:2], fileNameHash), 'rb') as inFile:
-                if os.name == 'nt':
-                    mappedInFile = mmap.mmap(inFile.fileno(), length=0, access=mmap.ACCESS_READ)
-                else:
-                    mappedInFile = mmap.mmap(inFile.fileno(), length=0, prot=mmap.PROT_READ)
+            # Case for decrypted file: simply copy and rename
+            import shutil
 
-                with open(targetFileName, 'wb') as outFile:
-
-                    chunkIndex=0
-                    while True:
-                        chunk = mappedInFile[chunkIndex*chunkSize:(chunkIndex+1)*chunkSize]
-
-                        if len(chunk) == 0:
-                            break
-
-                        outFile.write(chunk)
-                        chunkIndex+=1
-
-                    outFile.truncate(info['size'])
-
+            shutil.copyfile(
+                # {BACKUP_ROOT}/{UDID}/ae/ae2c3d4e5f6...
+                src=os.path.join(self.backupRoot, self.udid, fileNameHash[:2], fileNameHash),
+                dst=targetFileName,
+                follow_symlinks=True
+            )
 
 
         # Set file modification date and localtime time as per device's
