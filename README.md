@@ -1,8 +1,10 @@
 # iOSbackup
 
-A Python 3 class that reads and extracts files from a **password-encrypted iOS backup** created by iTunes on Mac and Windows. Compatible with iOS 13 and iOS 14. [Looking for contributors that can include non-encrypted backup support as well].
+A Python 3 class that reads and extracts files from a **password-encrypted iOS backup** created by iTunes on Mac and Windows.
+Initial support for unencrypted backups has been aded since version 0.9.923.
+Tested compatibility since iOS 10 up to current iOS 15.
 
-You will need your backup password to decrypt the backup files, this is the password iTunes asks when it is configured to do encrypted backups. This password can be found on macOS' Keychain Access app, under `login` keychain, entry `iOS Backup`. 
+You will need your backup password to decrypt the backup files, this is the password iTunes asks when it is configured to do encrypted backups. This password can be found on macOS’ Keychain Access app, under `login` keychain, entry `iOS Backup` (update: newer macOS apparently doesn’t store it in KayChain anymore).
 
 You should always prefer encrypted backups because they are more secure and include more files from your device. Non-encrypted backups do not backup files as Health app database and other preciosities.
 
