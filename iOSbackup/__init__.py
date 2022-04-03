@@ -23,7 +23,7 @@ except:
     from Crypto.Cipher import AES # https://www.dlitz.net/software/pycrypto/
 
 
-__version__ = '0.9.921'
+__version__ = '0.9.922'
 
 module_logger = logging.getLogger(__name__)
 
@@ -656,8 +656,7 @@ class iOSbackup(object):
         fileList=[]
         for payload in backupFiles:
             payload=dict(payload)
-#             payload['manifest']=biplist.readPlistFromString(payload['file'])
-            payload['manifest']=plistlib.loads(payload['file'])
+            payload['manifest']=NSKeyedUnArchiver.unserializeNSKeyedArchiver(payload['file'])
             del payload['file']
 
             # Compute target file with path
@@ -742,8 +741,6 @@ class iOSbackup(object):
 
         if backupFile:
             payload=dict(backupFile)
-#             payload['manifest']=biplist.readPlistFromString(payload['file'])
-#             payload['manifest']=plistlib.loads(payload['file'])
             payload['manifest']=NSKeyedUnArchiver.unserializeNSKeyedArchiver(payload['file'])
             del payload['file']
         else:
@@ -767,8 +764,6 @@ class iOSbackup(object):
             manifest=manifestData
         elif type(manifestData)==bytes:
             # Interpret data stream and convert into a dict
-#             manifest = biplist.readPlistFromString(manifestData)
-#             manifest = plistlib.loads(manifestData)
             manifest = NSKeyedUnArchiver.unserializeNSKeyedArchiver(manifestData)
 
 
