@@ -1,5 +1,13 @@
 # Changelog for iOSbackup
 
+## v0.9.922...0.9.921
+* fix(getFolderDecryptedCopy): unserializeNSKeyedArchiver for manifest file
+* Merge pull request #18 from doronz88/master
+* Merge pull request #16 from ickc/encoding
+* bugfix: setBackupRoot will use "hinted" path only explicitly
+* add .gitignore
+* explicit encoding
+
 ## v0.9.921...v0.9.913
 * version bump
 * typos in build system
