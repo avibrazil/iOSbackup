@@ -116,7 +116,7 @@ class iOSbackup(object):
 
     platformFoldersHint = {
         'darwin': '~/Library/Application Support/MobileSync/Backup',
-        'win32': r'%HOME%\Apple Computer\MobileSync\Backup'
+        'win32': r'%APPDATA%\Apple Computer\MobileSync\Backup'
     }
 
     catalog = {
