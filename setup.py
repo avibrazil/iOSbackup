@@ -39,5 +39,5 @@ setuptools.setup(
         "Topic :: System :: Archiving :: Backup",
         "Topic :: System :: Recovery Tools"
     ],
-    python_requires='>=3.8',
+    python_requires='>=3.7',
 )
