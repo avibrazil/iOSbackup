@@ -1,5 +1,9 @@
 # Changelog for iOSbackup
 
+## v0.9.925...v0.9.923
+* correct Windows path
+* Python version required is now 3.7, instead of 3.8
+
 ## v0.9.923...v0.9.922
 * feat(unencrypted): initial support for unencrypted iOS backups
 * Merge pull request #21 from ahsueh1996/master
