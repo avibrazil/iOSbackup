@@ -1004,47 +1004,29 @@ class iOSbackup(object):
                     # (decrypted output sometimes adds RFC 1423 padding, aligning data on a 16-byte boundary)
                     originalSize=os.path.getsize(os.path.join(self.backupRoot, self.udid, fileNameHash[:2], fileNameHash))
                     if bytesWritten - info['size'] > 16:
-                        # For more than 16 bytes appended, freak out and do a bunch of logging
-                        print(f"[WARN] Decrypted file size exceeds reported by {bytesWritten - info['size']} bytes, {targetFileName}:\n"
-                              f"       - encrypted: {originalSize}\n"
-                              f"       - decrypted: {bytesWritten}\n"
-                              f"       - reported:  {info['size']}")
-
                         # Check if we have a final encryption pass of 16 bytes appended, for some reason
                         if finalByteWritten == 16:
                             assert decrypted_chunk[-1] == 16
                             assert decrypted_chunk[-2] == 16
                             assert decrypted_chunk[-15] == 16
                             assert decrypted_chunk[-16] == 16
-                            print(f"[INFO] File seems to have had 16 bytes of padding appended, removing")
-                            print()
                             outFile.truncate(bytesWritten - finalByteWritten)
-                        else:
-                            print(f"[DEBUG] Found a wrongly-sized file with weird padding, you should flip out (final byte: {finalByteWritten})")
 
                     if bytesWritten - info['size'] == 16:
-                        # TODO: Merge this cleanly into the above case
                         assert finalByteWritten == 16
-                        #print(f"[INFO] Decrypted file size exceeds reported by exactly 16 bytes, {targetFileName}:")
                         outFile.truncate(bytesWritten - 16)
 
                     if bytesWritten - info['size'] < 16 and bytesWritten - info['size'] > 0:
                         # This is the "normal" case, where we added a few bytes of extra padding
-                        #print(f"[WARN] Final byte says padding is {finalByteWritten} bytes, file size % 16 = {bytesWritten % 16}, removing that many bytes from end of file")
                         outFile.truncate(bytesWritten - finalByteWritten)
 
                     if bytesWritten - info['size'] < 0:
                         # For an over-reported size, do nothing because we can't conjure data from nowhere
-                        print(f"[WARN] Recorded file size in Manifest.db is greater than actual bytes written ({bytesWritten} > {info['size']}): {targetFileName}")
                         # Still, check if the last 16 bytes looks like padding
-                        if finalByteWritten <= 16:
-                            print(f"       Final recorded byte is {finalByteWritten}, assuming this is encryption-related padding and removing those bytes")
                         if finalByteWritten == 16:
                             assert decrypted_chunk[-1] == 16
                             assert decrypted_chunk[-16] == 16
                             outFile.truncate(bytesWritten - finalByteWritten)
-                        else:
-                            print(f"[DEBUG] Found a wrongly-sized file with weird padding, you should flip out (final byte: {finalByteWritten})")
 
         elif info['isFolder']:
             # Plain folder
