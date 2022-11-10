@@ -1000,32 +1000,36 @@ class iOSbackup(object):
                         bytesWritten+=len(decrypted_chunk)
                         finalByteWritten=decrypted_chunk[-1]
 
+                    def has_aes_padding(expectedPaddingSize):
+                        """Checks the content of the last N bytes, which should be filled with 'N' repeating"""
+                        if finalByteWritten != expectedPaddingSize:
+                            return False
+
+                        # Checks each byte by counting occurrences
+                        potential_padding = decrypted_chunk[-finalByteWritten:]
+                        return potential_padding.count(finalByteWritten) == finalByteWritten
+
                     # Compare file sizes across 1) Manifest.db record, 2) original file, and 3) decrypted output
                     # (decrypted output sometimes adds RFC 1423 padding, aligning data on a 16-byte boundary)
                     originalSize=os.path.getsize(os.path.join(self.backupRoot, self.udid, fileNameHash[:2], fileNameHash))
                     if bytesWritten - info['size'] > 16:
                         # Check if we have a final encryption pass of 16 bytes appended, for some reason
-                        if finalByteWritten == 16:
-                            assert decrypted_chunk[-1] == 16
-                            assert decrypted_chunk[-2] == 16
-                            assert decrypted_chunk[-15] == 16
-                            assert decrypted_chunk[-16] == 16
+                        if has_aes_padding(16):
                             outFile.truncate(bytesWritten - finalByteWritten)
 
                     if bytesWritten - info['size'] == 16:
-                        assert finalByteWritten == 16
-                        outFile.truncate(bytesWritten - 16)
+                        if has_aes_padding(16):
+                            outFile.truncate(bytesWritten - 16)
 
                     if bytesWritten - info['size'] < 16 and bytesWritten - info['size'] > 0:
                         # This is the "normal" case, where we added a few bytes of extra padding
-                        outFile.truncate(bytesWritten - finalByteWritten)
+                        if has_aes_padding(bytesWritten - info['size']):
+                            outFile.truncate(bytesWritten - finalByteWritten)
 
                     if bytesWritten - info['size'] < 0:
                         # For an over-reported size, do nothing because we can't conjure data from nowhere
                         # Still, check if the last 16 bytes looks like padding
-                        if finalByteWritten == 16:
-                            assert decrypted_chunk[-1] == 16
-                            assert decrypted_chunk[-16] == 16
+                        if has_aes_padding(16):
                             outFile.truncate(bytesWritten - finalByteWritten)
 
         elif info['isFolder']:
