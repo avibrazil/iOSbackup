@@ -1096,8 +1096,11 @@ class iOSbackup(object):
 
 
         infoFile = os.path.join(self.backupRoot, self.udid, iOSbackup.catalog['info'])
-        with open(infoFile, 'rb') as infile:
-            self.info = plistlib.load(infile)
+        try:
+            with open(infoFile, 'rb') as infile:
+                self.info = plistlib.load(infile)
+        except:
+            self.info = None
 
 
 
